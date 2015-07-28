@@ -1,0 +1,3 @@
+
+-- for PTHREAD_MUTEX_INITIALIZER 
+    : in my_mutex.c : is_my_mutex() check and new mutex create and update has to be atomic
