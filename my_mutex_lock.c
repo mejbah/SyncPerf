@@ -40,26 +40,17 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
 {
     //printf("In my pthread mutex lock\n");
 
-    //mejbah added for meta
-#if 0
-    my_mutex_t **tmp;
-    tmp = mutex;
 
-    *tmp)->count = (*tmp)->count + 1;
-    //__sync_fetch_and_add(&tmp->count,1);
-    printf("---lock count: %u---\n", (*tmp)->count);
-    mutex = &(*tmp)->mutex;
-#endif
     if( !is_my_mutex(mutex) ) 
     {
-        *(my_mutex_t**)mutex = create_mutex(mutex);
+        my_mutex_t *new_mutex = create_mutex(mutex);
+        setSyncEntry(mutex, new_mutex);
     }
 
     my_mutex_t *tmp = get_mutex(mutex);
     tmp->count = tmp->count + 1;
     printf("---lock count: %u---\n", tmp->count);
     mutex = &tmp->mutex;
-    //mejbah added for meta : end
 	
     assert (sizeof (mutex->__size) >= sizeof (mutex->__data));
 

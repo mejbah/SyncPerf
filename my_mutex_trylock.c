@@ -24,7 +24,8 @@ pthread_mutex_trylock (pthread_mutex_t *mutex)
 
     if( !is_my_mutex(mutex) )
     {
-        *(my_mutex_t**)mutex = create_mutex(mutex);
+        my_mutex_t *new_mutex = create_mutex(mutex);
+        setSyncEntry(mutex, new_mutex);
     }
     my_mutex_t *tmp = get_mutex(mutex);
     tmp->count = tmp->count + 1;

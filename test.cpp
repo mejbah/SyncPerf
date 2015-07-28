@@ -3,9 +3,9 @@
 #include<pthread.h>
 #include<unistd.h>
 
-#if 1
+#if 0
 int count = 0;
-pthread_mutex_t mutex= PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void *run( void *arg ){
     pthread_mutex_lock(&mutex);
@@ -21,10 +21,9 @@ int main(int argc, char ** argv) {
 
 	//fprintf(stderr, "Calling pthread_mutex_init\n");
    
-//    pthread_mutex_init(&mutex, NULL);
+    //pthread_mutex_init(&mutex, NULL);
     
     pthread_create(&t1,NULL,run,NULL);
-    sleep(1);
     pthread_create(&t2,NULL,run,NULL);
     pthread_create(&t3,NULL,run,NULL);
     
@@ -41,7 +40,7 @@ int main(int argc, char ** argv) {
 
 
 #endif
-#if 0
+#if 1
 //#include "pthread.h"
 //#include "stdio.h"
 #include<unistd.h>

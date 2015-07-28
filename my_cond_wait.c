@@ -37,10 +37,6 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	int pi_flag = 0;
 #endif
 
-     if( !is_my_mutex(mutex) )
-     {
-         *(my_mutex_t**)mutex = create_mutex(mutex);
-     }
      my_mutex_t *tmp = get_mutex(mutex);
      mutex = &tmp->mutex;
 

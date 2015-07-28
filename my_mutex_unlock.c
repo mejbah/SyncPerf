@@ -291,14 +291,9 @@ int
 pthread_mutex_unlock ( pthread_mutex_t *mutex )
 {
   printf("In my mutex unlock\n"); 
-  //mejbah added for meta
-#if 0
-  my_mutex_t **tmp;
-  tmp = mutex;
-  mutex = &(*tmp)->mutex;
-#endif
+
   my_mutex_t *tmp = get_mutex(mutex);
   mutex = &tmp->mutex;
-  //mejbah added for meta : end
+ 
   return __pthread_mutex_unlock_usercnt (mutex, 1);
 }
