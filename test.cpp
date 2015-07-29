@@ -56,7 +56,7 @@ int count=1;
 void *ChildThread1(void *arg)
 {
 
-    sleep(1);
+//    sleep(1);
     pthread_mutex_lock (&mut);
         printf("wait called\n");
         while(count<10)                      //if while loop with signal complete first don't wait
@@ -111,7 +111,7 @@ int main(void)
     //pthread_join(child3,NULL);
  
     pthread_cond_destroy(&con);
-    pthread_mutex_destroy(&mut);
+//    pthread_mutex_destroy(&mut);
     pthread_exit(NULL);
     return 0;
 }
