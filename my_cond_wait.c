@@ -18,10 +18,73 @@
 struct _condvar_cleanup_buffer
 {
       int oldtype;
-        pthread_cond_t *cond;
-          pthread_mutex_t *mutex;
-            unsigned int bc_seq;
+      pthread_cond_t *cond;
+      pthread_mutex_t *mutex;
+      unsigned int bc_seq;
 };
+
+void
+__attribute__ ((visibility ("hidden")))
+__condvar_cleanup (void *arg)
+{
+  struct _condvar_cleanup_buffer *cbuffer =
+    (struct _condvar_cleanup_buffer *) arg;
+  unsigned int destroying;
+  int pshared = (cbuffer->cond->__data.__mutex == (void *) ~0l)
+		? LLL_SHARED : LLL_PRIVATE;
+
+  /* We are going to modify shared data.  */
+  lll_lock (cbuffer->cond->__data.__lock, pshared);
+
+  if (cbuffer->bc_seq == cbuffer->cond->__data.__broadcast_seq)
+    {
+      /* This thread is not waiting anymore.  Adjust the sequence counters
+	 appropriately.  We do not increment WAKEUP_SEQ if this would
+	 bump it over the value of TOTAL_SEQ.  This can happen if a thread
+	 was woken and then canceled.  */
+      if (cbuffer->cond->__data.__wakeup_seq
+	  < cbuffer->cond->__data.__total_seq)
+	{
+	  ++cbuffer->cond->__data.__wakeup_seq;
+	  ++cbuffer->cond->__data.__futex;
+	}
+      ++cbuffer->cond->__data.__woken_seq;
+    }
+
+  cbuffer->cond->__data.__nwaiters -= 1 << COND_NWAITERS_SHIFT;
+
+  /* If pthread_cond_destroy was called on this variable already,
+     notify the pthread_cond_destroy caller all waiters have left
+     and it can be successfully destroyed.  */
+  destroying = 0;
+  if (cbuffer->cond->__data.__total_seq == -1ULL
+      && cbuffer->cond->__data.__nwaiters < (1 << COND_NWAITERS_SHIFT))
+    {
+      lll_futex_wake (&cbuffer->cond->__data.__nwaiters, 1, pshared);
+      destroying = 1;
+    }
+
+  /* We are done.  */
+  lll_unlock (cbuffer->cond->__data.__lock, pshared);
+
+  /* Wake everybody to make sure no condvar signal gets lost.  */
+  if (! destroying)
+    lll_futex_wake (&cbuffer->cond->__data.__futex, INT_MAX, pshared);
+
+  /* Get the mutex before returning unless asynchronous cancellation
+     is in effect.  We don't try to get the mutex if we already own it.  */
+
+  if (!(USE_REQUEUE_PI (cbuffer->mutex))
+      || ((cbuffer->mutex->__data.__lock & FUTEX_TID_MASK)
+	  != THREAD_GETMEM (THREAD_SELF, tid)))
+  {
+    __pthread_mutex_cond_lock (cbuffer->mutex);
+  }
+  else
+    __pthread_mutex_cond_lock_adjust (cbuffer->mutex);
+}
+
+
 
 int
 pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
@@ -31,7 +94,6 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	int err;
 	int pshared = (cond->__data.__mutex == (void *) ~0l)
 		? LLL_SHARED : LLL_PRIVATE;
-	printf("In my pthread cond wait\n");
 #if (defined lll_futex_wait_requeue_pi \
 	&& defined __ASSUME_REQUEUE_PI)
 	int pi_flag = 0;
@@ -47,14 +109,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 
 	/* Now we can release the mutex.  */
 	err = __pthread_mutex_unlock_usercnt (mutex, 0);
-	//mejbah added
-	//lll_unlock (mutex->__data.__lock, PTHREAD_MUTEX_PSHARED (mutex));
-	//mejbah aded end
-	//if (__glibc_unlikely (err))
-	//   {
-	//     lll_unlock (cond->__data.__lock, pshared);
-	//     return err;
-	//   }
+	
 
 	/* We have one new user of the condvar.  */
 	++cond->__data.__total_seq;
@@ -73,8 +128,8 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 
 	/* Before we block we enable cancellation.  Therefore we have to
 	install a cancellation handler.  */
-	// __pthread_cleanup_push (&buffer, __condvar_cleanup, &cbuffer);
-
+	__pthread_cleanup_push (&buffer, __condvar_cleanup, &cbuffer);
+     
 	/* The current values of the wakeup counter.  The "woken" counter
 	must exceed this value.  */
 	unsigned long long int val;
@@ -90,7 +145,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 		lll_unlock (cond->__data.__lock, pshared);
 
 		/* Enable asynchronous cancellation.  Required by the standard.  */
-		//cbuffer.oldtype = __pthread_enable_asynccancel ();
+		cbuffer.oldtype = __pthread_enable_asynccancel ();
 
 #if (defined lll_futex_wait_requeue_pi \
 	&& defined __ASSUME_REQUEUE_PI)
@@ -112,13 +167,19 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 
 			pi_flag = (err == 0);
 		}
-		else
+		else 
 #endif
+        {
+#ifdef MY_DEBUG
+            printf("In my pthread cond wait\n");
+#endif
+
 			/* Wait until woken by signal or broadcast.  */
 			lll_futex_wait (&cond->__data.__futex, futex_val, pshared);
+        }
 
 		/* Disable asynchronous cancellation.  */
-		//__pthread_disable_asynccancel (cbuffer.oldtype);
+		__pthread_disable_asynccancel (cbuffer.oldtype);
 
 		/* We are going to look at shared data again, so get the lock.  */
 		lll_lock (cond->__data.__lock, pshared);
@@ -150,19 +211,19 @@ bc_out:
 	lll_unlock (cond->__data.__lock, pshared);
 
 	/* The cancellation handling is back to normal, remove the handler.  */
-	// __pthread_cleanup_pop (&buffer, 0);
+	 __pthread_cleanup_pop (&buffer, 0);
 
 	/* Get the mutex before returning.  Not needed for PI.  */
-	//#if (defined lll_futex_wait_requeue_pi \
+#if (defined lll_futex_wait_requeue_pi \
 	&& defined __ASSUME_REQUEUE_PI)
-	//  if (pi_flag)
-	//    {
-	//      __pthread_mutex_cond_lock_adjust (mutex);
-	//      return 0;
-	//    }
-	//  else
-	//#endif
-	return __pthread_mutex_cond_lock (mutex);
+	  if (pi_flag)
+	    {
+	      __pthread_mutex_cond_lock_adjust (mutex);
+	      return 0;
+	    }
+	  else
+	#endif
+	    return __pthread_mutex_cond_lock (mutex);
 	//return pthread_mutex_lock(mutex);//mejbah added
 }
 

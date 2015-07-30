@@ -40,7 +40,7 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
 {
     //printf("In my pthread mutex lock\n");
 
-
+#ifndef NO_INCR // when called for cond_lock
     if( !is_my_mutex(mutex) ) 
     {
         my_mutex_t *new_mutex = create_mutex(mutex);
@@ -49,9 +49,9 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
 
     my_mutex_t *tmp = get_mutex(mutex);
     tmp->count = tmp->count + 1;
-    printf("---lock count: %u---\n", tmp->count);
+    //printf("---lock count: %u---\n", tmp->count);
     mutex = &tmp->mutex;
-	
+#endif	
     assert (sizeof (mutex->__size) >= sizeof (mutex->__data));
 
     
@@ -96,7 +96,7 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
 
 	case PTHREAD_MUTEX_TIMED_NP:
 simple:
-		printf("PTHREAD_MUTEX_TIMED_NP\n");
+		//printf("PTHREAD_MUTEX_TIMED_NP\n");
 		/* Normal mutex.  */
 		// LLL_MUTEX_LOCK (mutex->__data.__lock);
 		LLL_MUTEX_LOCK (mutex);

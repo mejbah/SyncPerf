@@ -290,7 +290,7 @@ __pthread_mutex_unlock_full (pthread_mutex_t *mutex, int decr)
 int
 pthread_mutex_unlock ( pthread_mutex_t *mutex )
 {
-  printf("In my mutex unlock\n"); 
+  //printf("In my mutex unlock\n"); 
 
   my_mutex_t *tmp = get_mutex(mutex);
   mutex = &tmp->mutex;

@@ -38,82 +38,60 @@ int main(int argc, char ** argv) {
 }
 
 
-
 #endif
-#if 1
-//#include "pthread.h"
-//#include "stdio.h"
-#include<unistd.h>
- 
-volatile int sv=10;
-volatile int x,y,temp=10;
+
+
 pthread_mutex_t mut=PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t con=PTHREAD_COND_INITIALIZER;
-pthread_t child1,child2,child3;
-int condition=1,val=1;
-int count=1;
- 
-void *ChildThread1(void *arg)
+pthread_t t1,t2;
+
+int count = 1;
+int max_count = 20;
+int start = 10;
+int end = 15;
+
+void *fcount1(void *arg)
 {
+    while(1) {
+        pthread_mutex_lock(&mut);
 
-//    sleep(1);
-    pthread_mutex_lock (&mut);
-        printf("wait called\n");
-        while(count<10)                      //if while loop with signal complete first don't wait
-        {
-            printf("In wait\n");
-            pthread_cond_wait(&con, &mut);  //wait for the signal with con as condition variable
-        }
-        x=sv;
-        x++;
-        sv=x;
-        printf("The child1 sv is %d\n",sv);
-    pthread_mutex_unlock (&mut);
+        pthread_cond_wait(&con, &mut);
+        count++;
+        printf("fcount1 val %d\n", count);
+        
+        pthread_mutex_unlock(&mut);
 
-
-}
- 
-void *ChildThread2(void *arg)
-{
-
-    sleep(1); 
-    while(count<10)
-    {
-        //sleep(1);
-        pthread_mutex_lock (&mut);
-            pthread_cond_signal(&con);  //wake up waiting thread with condition variable
-                                        //con if it is called before this function
-            if(val==1)
-            {
-                y=sv;
-                y--;
-                sv=y;
-                printf("The child2 sv is %d\n",sv);
-                val++;
-            }
-            count++;
-        pthread_mutex_unlock (&mut);
-         
+        if(count > max_count) break;
     }
-    printf("mutex released\n");
-
-
+    
 }
 
-int main(void)
+
+void *fcount2(void *arg)
 {
-    int co=1;
-    pthread_create(&child1,NULL,ChildThread1,NULL);
-    pthread_create(&child2,NULL,ChildThread2,NULL);
-    //pthread_create(&child3,NULL,ChildThread1,NULL);
-    pthread_join(child1,NULL);
-    pthread_join(child2,NULL);
-    //pthread_join(child3,NULL);
- 
-    pthread_cond_destroy(&con);
-//    pthread_mutex_destroy(&mut);
-    pthread_exit(NULL);
-    return 0;
+    while(1){
+        pthread_mutex_lock(&mut);
+
+        if(count < start || count > end)
+            pthread_cond_signal(&con);
+        else {
+            count ++;
+            printf("fcount2 val %d\n", count);
+        }
+
+        pthread_mutex_unlock(&mut);
+
+        if(count > max_count) break;
+    }
 }
 
-#endif
+
+int main() {
+
+    pthread_create(&t1, NULL, fcount1, NULL);
+    pthread_create(&t2, NULL, fcount2, NULL);
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+}
+

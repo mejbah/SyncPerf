@@ -134,6 +134,36 @@ extern int __pthread_current_priority (void);//attribute_hidden;
 //extern int __set_robust_list_avail ;//attribute_hidden;
 #endif
 
+/* Test if the mutex is suitable for the FUTEX_WAIT_REQUEUE_PI operation.  */
+#if (defined lll_futex_wait_requeue_pi \
+             && defined __ASSUME_REQUEUE_PI)
+# define USE_REQUEUE_PI(mut) \
+       ((mut) && (mut) != (void *) ~0l \
+            && (((mut)->__data.__kind \
+                         & (PTHREAD_MUTEX_PRIO_INHERIT_NP | PTHREAD_MUTEX_ROBUST_NORMAL_NP)) \
+                    == PTHREAD_MUTEX_PRIO_INHERIT_NP))
+#else
+# define USE_REQUEUE_PI(mut) 0
+#endif
+
+/* Called when a thread reacts on a cancellation request.  */
+static inline void
+__attribute ((noreturn, always_inline))
+__do_cancel (void)
+{
+      struct pthread *self = THREAD_SELF;
+
+        /* Make sure we get no more cancellations.  */
+        THREAD_ATOMIC_BIT_SET (self, cancelhandling, EXITING_BIT);
+
+          __pthread_unwind ((__pthread_unwind_buf_t *)
+                              THREAD_GETMEM (self, cleanup_jmp_buf));
+}
+
+
+
+
+
 #endif  /* pthreadP.h */
 
 

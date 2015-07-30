@@ -20,7 +20,9 @@ int
 pthread_mutex_trylock (pthread_mutex_t *mutex)
 {
 	int oldval;
+#ifdef MY_DEBUG
 	printf("In my pthread mutex trylock\n");
+#endif
 
     if( !is_my_mutex(mutex) )
     {
@@ -29,7 +31,7 @@ pthread_mutex_trylock (pthread_mutex_t *mutex)
     }
     my_mutex_t *tmp = get_mutex(mutex);
     tmp->count = tmp->count + 1;
-    printf("---lock count: %u---\n", tmp->count);
+    //printf("---lock count: %u---\n", tmp->count);
     mutex = &tmp->mutex;
 
 	pid_t id = THREAD_GETMEM (THREAD_SELF, tid);
