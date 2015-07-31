@@ -21,7 +21,7 @@
       lll_lock ((mutex)->__data.__lock, PTHREAD_MUTEX_PSHARED (mutex))
 # define LLL_MUTEX_TRYLOCK(mutex) \
       lll_trylock ((mutex)->__data.__lock)
-# define LLL_ROBUST_MUTEX_LOCK(mutex, id) \
+//# define LLL_ROBUST_MUTEX_LOCK(mutex, id) \
       lll_robust_lock ((mutex)->__data.__lock, id, \
                          PTHREAD_ROBUST_MUTEX_PSHARED (mutex))
 //# define LLL_MUTEX_LOCK_ELISION(mutex) \
@@ -33,6 +33,7 @@
 #endif
 
 
+
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 int
@@ -41,6 +42,8 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
     //printf("In my pthread mutex lock\n");
 
 #ifndef NO_INCR // when called for cond_lock
+
+#ifndef ORIGINAL
     if( !is_my_mutex(mutex) ) 
     {
         my_mutex_t *new_mutex = create_mutex(mutex);
@@ -51,6 +54,8 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
     tmp->count = tmp->count + 1;
     //printf("---lock count: %u---\n", tmp->count);
     mutex = &tmp->mutex;
+#endif
+
 #endif	
     assert (sizeof (mutex->__size) >= sizeof (mutex->__data));
 
@@ -137,6 +142,7 @@ simple:
 	case PTHREAD_MUTEX_ROBUST_NORMAL_NP:
 	case PTHREAD_MUTEX_ROBUST_ADAPTIVE_NP:
     printf("PTHREAD_MUTEX_ROBUST_*_NP\n");
+#if 0
 		THREAD_SETMEM (THREAD_SELF, robust_head.list_op_pending,
 			&mutex->__data.__list.__next);
 
@@ -228,7 +234,7 @@ again:
 		ENQUEUE_MUTEX (mutex);
 		THREAD_SETMEM (THREAD_SELF, robust_head.list_op_pending, NULL);
 		break;
-
+#endif
 	case PTHREAD_MUTEX_PI_RECURSIVE_NP:
 	case PTHREAD_MUTEX_PI_ERRORCHECK_NP:
 	case PTHREAD_MUTEX_PI_NORMAL_NP:

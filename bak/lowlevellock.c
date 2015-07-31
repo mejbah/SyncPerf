@@ -35,7 +35,7 @@ __lll_lock_wait_private (int *futex)
 
 
 /* This function doesn't get included in libc.  */
-//#if IS_IN (libpthread)
+#if IS_IN (libpthread)
 void
 __lll_lock_wait (int *futex, int private)
 {
@@ -45,4 +45,4 @@ __lll_lock_wait (int *futex, int private)
   while (atomic_exchange_acq (futex, 2) != 0)
     lll_futex_wait (futex, 2, private); /* Wait if *futex == 2.  */
 }
-//#endif
+#endif

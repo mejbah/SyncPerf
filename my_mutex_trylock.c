@@ -24,6 +24,7 @@ pthread_mutex_trylock (pthread_mutex_t *mutex)
 	printf("In my pthread mutex trylock\n");
 #endif
 
+#ifndef ORIGINAL
     if( !is_my_mutex(mutex) )
     {
         my_mutex_t *new_mutex = create_mutex(mutex);
@@ -33,6 +34,7 @@ pthread_mutex_trylock (pthread_mutex_t *mutex)
     tmp->count = tmp->count + 1;
     //printf("---lock count: %u---\n", tmp->count);
     mutex = &tmp->mutex;
+#endif
 
 	pid_t id = THREAD_GETMEM (THREAD_SELF, tid);
 
@@ -199,6 +201,7 @@ again:
 	case PTHREAD_MUTEX_PI_ROBUST_ERRORCHECK_NP:
 	case PTHREAD_MUTEX_PI_ROBUST_NORMAL_NP:
 	case PTHREAD_MUTEX_PI_ROBUST_ADAPTIVE_NP:
+   #if 0
 		{
 			int kind = mutex->__data.__kind & PTHREAD_MUTEX_KIND_MASK_NP;
 			int robust = mutex->__data.__kind & PTHREAD_MUTEX_ROBUST_NORMAL_NP;
@@ -319,6 +322,7 @@ again:
 
 			return 0;
 		}
+  #endif //mejbah
 #endif  /* __NR_futex.  */
 
 	case PTHREAD_MUTEX_PP_RECURSIVE_NP:

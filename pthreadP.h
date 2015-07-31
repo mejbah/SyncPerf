@@ -16,6 +16,12 @@
 #include <errno.h>
 //#include <nptl-signals.h>
 
+
+//mejbah added
+#define FUTEX_LOCK_PI       6
+#define FUTEX_UNLOCK_PI     7
+#define FUTEX_TRYLOCK_PI    8
+
 /* Adaptive mutex definitions.  */
 #ifndef MAX_ADAPTIVE_COUNT
 # define MAX_ADAPTIVE_COUNT 100

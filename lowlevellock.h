@@ -22,16 +22,6 @@
 #include <atomic.h>
 #include <lowlevellock-futex.h>
 
-/* Values for 'private' parameter of locking macros.  Note pthreadP.h
-   optimizes for these exact values, though they are not required.  */
-#define LLL_PRIVATE     0
-#define LLL_SHARED      128
-
-#define FUTEX_LOCK_PI       6
-#define FUTEX_UNLOCK_PI     7
-#define FUTEX_TRYLOCK_PI    8
-
-
 /* Low-level locks use a combination of atomic operations (to acquire and
    release lock ownership) and futex operations (to block until the state
    of a lock changes).  A lock can be in one of three states:
@@ -82,9 +72,9 @@
 #define lll_cond_trylock(lock)	\
   atomic_compare_and_exchange_bool_acq (&(lock), 2, 0)
 
-extern void __lll_lock_wait_private (int *futex) ;//attribute_hidden;
-extern void __lll_lock_wait (int *futex, int private);// attribute_hidden;
-extern int __lll_robust_lock_wait (int *futex, int private);// attribute_hidden;
+extern void __lll_lock_wait_private (int *futex);
+extern void __lll_lock_wait (int *futex, int private);
+//extern int __lll_robust_lock_wait (int *futex, int private);
 
 /* This is an expression rather than a statement even though its value is
    void, so that it can be used in a comma expression or as an expression
@@ -112,7 +102,7 @@ extern int __lll_robust_lock_wait (int *futex, int private);// attribute_hidden;
 #define lll_lock(futex, private)	\
   __lll_lock (&(futex), private)
 
-
+#if 0 //mejbah
 /* If FUTEX is 0 (not acquired), set to ID (acquired with no waiters) and
    return 0.  Otherwise, ensure that it is set to FUTEX | FUTEX_WAITERS
    (acquired, possibly with waiters) and block until we acquire the lock.
@@ -133,7 +123,7 @@ extern int __lll_robust_lock_wait (int *futex, int private);// attribute_hidden;
   })
 #define lll_robust_lock(futex, id, private)     \
   __lll_robust_lock (&(futex), id, private)
-
+#endif
 
 /* This is an expression rather than a statement even though its value is
    void, so that it can be used in a comma expression or as an expression
@@ -151,17 +141,17 @@ extern int __lll_robust_lock_wait (int *futex, int private);// attribute_hidden;
    }))
 #define lll_cond_lock(futex, private) __lll_cond_lock (&(futex), private)
 
-
+#if 0 //mejbah
 /* As __lll_robust_lock, but set to ID | FUTEX_WAITERS (acquired, possibly with
    waiters) if FUTEX is 0.  */
 #define lll_robust_cond_lock(futex, id, private)	\
   __lll_robust_lock (&(futex), (id) | FUTEX_WAITERS, private)
 
-
+#endif
 extern int __lll_timedlock_wait (int *futex, const struct timespec *,
-				 int private);// attribute_hidden;
+				 int private) ;
 extern int __lll_robust_timedlock_wait (int *futex, const struct timespec *,
-					int private);// attribute_hidden;
+					int private);
 
 
 /* As __lll_lock, but with a timeout.  If the timeout occurs then return
@@ -256,8 +246,7 @@ extern int __lll_robust_timedlock_wait (int *futex, const struct timespec *,
       lll_futex_wait (&(tid), __tid, LLL_SHARED);\
   } while (0)
 
-extern int __lll_timedwait_tid (int *, const struct timespec *)
-     ;//attribute_hidden;
+extern int __lll_timedwait_tid (int *, const struct timespec *);
 
 /* As lll_wait_tid, but with a timeout.  If the timeout occurs then return
    ETIMEDOUT.  If ABSTIME is invalid, return EINVAL.  */

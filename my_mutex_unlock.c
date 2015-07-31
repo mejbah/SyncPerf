@@ -149,10 +149,12 @@ __pthread_mutex_unlock_full (pthread_mutex_t *mutex, int decr)
       if (--mutex->__data.__count != 0)
 	/* We still hold the mutex.  */
 	return 0;
-      goto continue_pi_non_robust;
+      //goto continue_pi_non_robust;
 
     case PTHREAD_MUTEX_PI_ROBUST_RECURSIVE_NP:
       /* Recursive mutex.  */
+       printf("PTHREAD_MUTEX_PI_ROBUST_*_NP\n");
+    #if 0
       if ((mutex->__data.__lock & FUTEX_TID_MASK)
 	  == THREAD_GETMEM (THREAD_SELF, tid)
 	  && __builtin_expect (mutex->__data.__owner
@@ -173,6 +175,7 @@ __pthread_mutex_unlock_full (pthread_mutex_t *mutex, int decr)
 	return 0;
 
       goto continue_pi_robust;
+   #endif
 
     case PTHREAD_MUTEX_PI_ERRORCHECK_NP:
     case PTHREAD_MUTEX_PI_NORMAL_NP:
@@ -180,6 +183,8 @@ __pthread_mutex_unlock_full (pthread_mutex_t *mutex, int decr)
     case PTHREAD_MUTEX_PI_ROBUST_ERRORCHECK_NP:
     case PTHREAD_MUTEX_PI_ROBUST_NORMAL_NP:
     case PTHREAD_MUTEX_PI_ROBUST_ADAPTIVE_NP:
+      printf("PTHREAD_MUTEX_ROBUST_*_NP\n");
+ #if 0
       if ((mutex->__data.__lock & FUTEX_TID_MASK)
 	  != THREAD_GETMEM (THREAD_SELF, tid)
 	  || ! lll_islocked (mutex->__data.__lock))
@@ -228,6 +233,7 @@ __pthread_mutex_unlock_full (pthread_mutex_t *mutex, int decr)
 
       THREAD_SETMEM (THREAD_SELF, robust_head.list_op_pending, NULL);
       break;
+  #endif
 #endif  /* __NR_futex.  */
 
     case PTHREAD_MUTEX_PP_RECURSIVE_NP:
@@ -290,10 +296,12 @@ __pthread_mutex_unlock_full (pthread_mutex_t *mutex, int decr)
 int
 pthread_mutex_unlock ( pthread_mutex_t *mutex )
 {
-  //printf("In my mutex unlock\n"); 
-
+#ifdef MY_DEBUG
+  printf("In my mutex unlock\n"); 
+#endif
+#ifndef ORIGINAL
   my_mutex_t *tmp = get_mutex(mutex);
   mutex = &tmp->mutex;
- 
+#endif
   return __pthread_mutex_unlock_usercnt (mutex, 1);
 }

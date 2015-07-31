@@ -98,9 +98,10 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	&& defined __ASSUME_REQUEUE_PI)
 	int pi_flag = 0;
 #endif
-
+#ifndef ORIGINAL
      my_mutex_t *tmp = get_mutex(mutex);
      mutex = &tmp->mutex;
+#endif
 
 	//LIBC_PROBE (cond_wait, 2, cond, mutex);
 
@@ -109,7 +110,11 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 
 	/* Now we can release the mutex.  */
 	err = __pthread_mutex_unlock_usercnt (mutex, 0);
-	
+    if (err)
+    {
+      lll_unlock (cond->__data.__lock, pshared);
+      return err;
+    }
 
 	/* We have one new user of the condvar.  */
 	++cond->__data.__total_seq;

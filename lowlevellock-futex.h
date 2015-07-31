@@ -21,23 +21,11 @@
 
 #include <errno.h>
 
-#define FUTEX_LOCK_PI       6
-#define FUTEX_UNLOCK_PI     7
-#define FUTEX_TRYLOCK_PI    8
-#define FUTEX_PRIVATE_FLAG  128
+
 /* Values for 'private' parameter of locking macros.  Note pthreadP.h
    optimizes for these exact values, though they are not required.  */
 #define LLL_PRIVATE     0
 #define LLL_SHARED      128
-
-# ifdef __ASSUME_PRIVATE_FUTEX
-#  define __lll_private_flag(fl, private) \
-      ((fl) | FUTEX_PRIVATE_FLAG)
-# else
-#  define __lll_private_flag(fl, private) \
-      ((fl) | THREAD_GETMEM (THREAD_SELF, header.private_futex))
-# endif
-
 
 
 /* For most of these macros, the return value is never really used.

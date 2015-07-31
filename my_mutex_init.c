@@ -101,20 +101,11 @@ int pthread_mutex_init (pthread_mutex_t *mutex, const pthread_mutexattr_t *mutex
 
 	// LIBC_PROBE (mutex_init, 1, mutex);
 
-    //mejbah added for meta
-#if 0
-    my_mutex_t *mymutex = malloc( sizeof(my_mutex_t));
-
-    //typedef Mutex_Meta* pthread_mutex_t;
-    mymutex->count = 0;
-    mymutex->mutex = *mutex;
-    //memcpy(&mymutex->mutex, mutex, sizeof(pthread_mutex_t));
-    *(my_mutex_t**)mutex = mymutex;
-#endif
+    //mejbah added 
+#ifndef ORIGINAL
     *(my_mutex_t**)mutex = create_mutex(mutex);
-    //mejbah added for meta : end
-     
-         
+#endif
+                
 	return 0;
 
 }
