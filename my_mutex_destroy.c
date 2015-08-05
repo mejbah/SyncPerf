@@ -10,9 +10,13 @@ pthread_mutex_destroy (mutex)
          pthread_mutex_t *mutex;
 {
       //LIBC_PROBE (mutex_destroy, 1, mutex);
+#ifdef MY_DEBUG
       printf("In my mutex destroy\n");
+#endif
+#ifndef ORIGINAL
       my_mutex_t *tmp = get_mutex(mutex);
       mutex = &tmp->mutex;
+#endif
       if ((mutex->__data.__kind & PTHREAD_MUTEX_ROBUST_NORMAL_NP) == 0
                       && mutex->__data.__nusers != 0)
                 return EBUSY;
