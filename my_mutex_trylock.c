@@ -93,6 +93,7 @@ elision: __attribute__((unused))
 	case PTHREAD_MUTEX_ROBUST_ERRORCHECK_NP:
 	case PTHREAD_MUTEX_ROBUST_NORMAL_NP:
 	case PTHREAD_MUTEX_ROBUST_ADAPTIVE_NP:
+#if 1 //mejbah
 		THREAD_SETMEM (THREAD_SELF, robust_head.list_op_pending,
 			&mutex->__data.__list.__next);
 
@@ -192,6 +193,7 @@ again:
 		/* The PI support requires the Linux futex system call.  If that's not
 		available, pthread_mutex_init should never have allowed the type to
 		be set.  So it will get the default case for an invalid type.  */
+#endif //mejbah
 #ifdef __NR_futex
 	case PTHREAD_MUTEX_PI_RECURSIVE_NP:
 	case PTHREAD_MUTEX_PI_ERRORCHECK_NP:

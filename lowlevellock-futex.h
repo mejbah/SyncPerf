@@ -1,5 +1,5 @@
-/* Low-level locking access to futex facilities.  Stub version.
-   Copyright (C) 2014-2015 Free Software Foundation, Inc.
+/* Low-level locking access to futex facilities.  Linux version.
+   Copyright (C) 2005-2015 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -9,7 +9,7 @@
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
@@ -17,70 +17,124 @@
    <http://www.gnu.org/licenses/>.  */
 
 #ifndef _LOWLEVELLOCK_FUTEX_H
-#define _LOWLEVELLOCK_FUTEX_H   1
+#define _LOWLEVELLOCK_FUTEX_H	1
 
-#include <errno.h>
+#ifndef __ASSEMBLER__
+#include <sysdep.h>
+#include <tls.h>
+//#include <kernel-features.h>
+#endif
 
+#define FUTEX_WAIT		0
+#define FUTEX_WAKE		1
+#define FUTEX_REQUEUE		3
+#define FUTEX_CMP_REQUEUE	4
+#define FUTEX_WAKE_OP		5
+#define FUTEX_OP_CLEAR_WAKE_IF_GT_ONE	((4 << 24) | 1)
+#define FUTEX_LOCK_PI		6
+#define FUTEX_UNLOCK_PI		7
+#define FUTEX_TRYLOCK_PI	8
+#define FUTEX_WAIT_BITSET	9
+#define FUTEX_WAKE_BITSET	10
+#define FUTEX_WAIT_REQUEUE_PI   11
+#define FUTEX_CMP_REQUEUE_PI    12
+#define FUTEX_PRIVATE_FLAG	128
+#define FUTEX_CLOCK_REALTIME	256
 
-/* Values for 'private' parameter of locking macros.  Note pthreadP.h
-   optimizes for these exact values, though they are not required.  */
-#define LLL_PRIVATE     0
-#define LLL_SHARED      128
+#define FUTEX_BITSET_MATCH_ANY	0xffffffff
 
+/* Values for 'private' parameter of locking macros.  Yes, the
+   definition seems to be backwards.  But it is not.  The bit will be
+   reversed before passing to the system call.  */
+#define LLL_PRIVATE	0
+#define LLL_SHARED	FUTEX_PRIVATE_FLAG
 
-/* For most of these macros, the return value is never really used.
-   Nevertheless, the protocol is that each one returns a negated errno
-   code for failure or zero for success.  (Note that the corresponding
-   Linux system calls can sometimes return positive values for success
-   cases too.  We never use those values.)  */
+#ifndef __ASSEMBLER__
 
+//#if IS_IN (libc) || IS_IN (rtld)
+/* In libc.so or ld.so all futexes are private.  */
+//# ifdef __ASSUME_PRIVATE_FUTEX
+//#  define __lll_private_flag(fl, private) \
+  ((fl) | FUTEX_PRIVATE_FLAG)
+//# else
+//#  define __lll_private_flag(fl, private) \
+  ((fl) | THREAD_GETMEM (THREAD_SELF, header.private_futex))
+//# endif
+//#else
+# ifdef __ASSUME_PRIVATE_FUTEX
+#  define __lll_private_flag(fl, private) \
+  (((fl) | FUTEX_PRIVATE_FLAG) ^ (private))
+# else
+#  define __lll_private_flag(fl, private) \
+  (__builtin_constant_p (private)					      \
+   ? ((private) == 0							      \
+      ? ((fl) | THREAD_GETMEM (THREAD_SELF, header.private_futex))	      \
+      : (fl))								      \
+   : ((fl) | (((private) ^ FUTEX_PRIVATE_FLAG)				      \
+	      & THREAD_GETMEM (THREAD_SELF, header.private_futex))))
+# endif
+//#endif
 
-/* Wait while *FUTEXP == VAL for an lll_futex_wake call on FUTEXP.  */
+#define lll_futex_syscall(nargs, futexp, op, ...)                       \
+  ({                                                                    \
+    INTERNAL_SYSCALL_DECL (__err);                                      \
+    long int __ret = INTERNAL_SYSCALL (futex, __err, nargs, futexp, op, \
+				       __VA_ARGS__);                    \
+    (__glibc_unlikely (INTERNAL_SYSCALL_ERROR_P (__ret, __err))         \
+     ? -INTERNAL_SYSCALL_ERRNO (__ret, __err) : 0);                     \
+  })
+
 #define lll_futex_wait(futexp, val, private) \
   lll_futex_timed_wait (futexp, val, NULL, private)
 
-/* Wait until a lll_futex_wake call on FUTEXP, or TIMEOUT elapses.  */
-#define lll_futex_timed_wait(futexp, val, timeout, private)             \
-  -ENOSYS
+#define lll_futex_timed_wait(futexp, val, timeout, private)     \
+  lll_futex_syscall (4, futexp,                                 \
+		     __lll_private_flag (FUTEX_WAIT, private),  \
+		     val, timeout)
 
-/* This macro should be defined only if FUTEX_CLOCK_REALTIME is also defined.
-   If CLOCKBIT is zero, this is identical to lll_futex_timed_wait.
-   If CLOCKBIT has FUTEX_CLOCK_REALTIME set, then it's the same but
-   TIMEOUT is counted by CLOCK_REALTIME rather than CLOCK_MONOTONIC.  */
 #define lll_futex_timed_wait_bitset(futexp, val, timeout, clockbit, private) \
-  -ENOSYS
+  lll_futex_syscall (6, futexp,                                         \
+		     __lll_private_flag (FUTEX_WAIT_BITSET | (clockbit), \
+					 private),                      \
+		     val, timeout, NULL /* Unused.  */,                 \
+		     FUTEX_BITSET_MATCH_ANY)
 
-/* Wake up up to NR waiters on FUTEXP.  */
 #define lll_futex_wake(futexp, nr, private)                             \
-  -ENOSYS
+  lll_futex_syscall (4, futexp,                                         \
+		     __lll_private_flag (FUTEX_WAKE, private), nr, 0)
 
-/* Wake up up to NR_WAKE waiters on FUTEXP.  Move up to NR_MOVE of the
-   rest from waiting on FUTEXP to waiting on MUTEX (a different futex).  */
+/* Returns non-zero if error happened, zero if success.  */
 #define lll_futex_requeue(futexp, nr_wake, nr_move, mutex, val, private) \
-  -ENOSYS
+  lll_futex_syscall (6, futexp,                                         \
+		     __lll_private_flag (FUTEX_CMP_REQUEUE, private),   \
+		     nr_wake, nr_move, mutex, val)
 
-/* Wake up up to NR_WAKE waiters on FUTEXP and NR_WAKE2 on FUTEXP2.  */
+/* Returns non-zero if error happened, zero if success.  */
 #define lll_futex_wake_unlock(futexp, nr_wake, nr_wake2, futexp2, private) \
-  -ENOSYS
+  lll_futex_syscall (6, futexp,                                         \
+		     __lll_private_flag (FUTEX_WAKE_OP, private),       \
+		     nr_wake, nr_wake2, futexp2,                        \
+		     FUTEX_OP_CLEAR_WAKE_IF_GT_ONE)
 
-
-/* Like lll_futex_wait (FUTEXP, VAL, PRIVATE) but with the expectation
-   that lll_futex_cmp_requeue_pi (FUTEXP, _, _, MUTEX, _, PRIVATE) will
-   be used to do the wakeup.  Confers priority-inheritance behavior on
-   the waiter.  */
+/* Priority Inheritance support.  */
 #define lll_futex_wait_requeue_pi(futexp, val, mutex, private) \
   lll_futex_timed_wait_requeue_pi (futexp, val, NULL, 0, mutex, private)
 
-/* Like lll_futex_wait_requeue_pi, but with a timeout.  */
 #define lll_futex_timed_wait_requeue_pi(futexp, val, timeout, clockbit, \
-                                        mutex, private)                 \
-  -ENOSYS
+					mutex, private)                 \
+  lll_futex_syscall (5, futexp,                                         \
+		     __lll_private_flag (FUTEX_WAIT_REQUEUE_PI          \
+					 | (clockbit), private),        \
+		     val, timeout, mutex)
 
-/* Like lll_futex_requeue, but pairs with lll_futex_wait_requeue_pi
-   and inherits priority from the waiter.  */
+
 #define lll_futex_cmp_requeue_pi(futexp, nr_wake, nr_move, mutex,       \
-                                 val, private)                          \
-  -ENOSYS
+				 val, private)                          \
+  lll_futex_syscall (6, futexp,                                         \
+		     __lll_private_flag (FUTEX_CMP_REQUEUE_PI,          \
+					 private),                      \
+		     nr_wake, nr_move, mutex, val)
 
+#endif  /* !__ASSEMBLER__  */
 
 #endif  /* lowlevellock-futex.h */

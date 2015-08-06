@@ -85,6 +85,7 @@ typedef struct
 
 
 //mejbah added
+#if 1
 /* 1 if 'type' is a pointer type, 0 otherwise.  */
 # define __pointer_type(type) (__builtin_classify_type ((type) 0) == 5)
 
@@ -100,7 +101,7 @@ typedef struct
 
 /* Cast an integer or a pointer VAL to integer with proper type.  */
 # define cast_to_integer(val) ((__integer_if_pointer_type (val)) (val))
-
+#endif
 //end mejbah added
 
 

@@ -1,6 +1,6 @@
-/* Low-level lock implementation.  Generic futex-based version.
-   Copyright (C) 2005-2015 Free Software Foundation, Inc.
+/* Copyright (C) 2002-2015 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
+   Contributed by Ulrich Drepper <drepper@redhat.com>, 2002.
 
    The GNU C Library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -9,229 +9,297 @@
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    Lesser General Public License for more details.
 
    You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library.  If not, see
+   License along with the GNU C Library; if not, see
    <http://www.gnu.org/licenses/>.  */
 
 #ifndef _LOWLEVELLOCK_H
 #define _LOWLEVELLOCK_H	1
 
-#include <atomic.h>
+//#include <stap-probe.h>
+#define __ASSUME_PRIVATE_FUTEX	1 //mejbah added
+#ifndef __ASSEMBLER__
+# include <time.h>
+# include <sys/param.h>
+# include <bits/pthreadtypes.h>
+//# include <kernel-features.h>
+//# include <tcb-offsets.h>
+
+# ifndef LOCK_INSTR
+#  ifdef UP
+#   define LOCK_INSTR	/* nothing */
+#  else
+#   define LOCK_INSTR "lock;"
+#  endif
+# endif
+#else
+# ifndef LOCK
+#  ifdef UP
+#   define LOCK
+#  else
+#   define LOCK lock
+#  endif
+# endif
+#endif
+
 #include <lowlevellock-futex.h>
 
-/* Low-level locks use a combination of atomic operations (to acquire and
-   release lock ownership) and futex operations (to block until the state
-   of a lock changes).  A lock can be in one of three states:
-   0:  not acquired,
-   1:  acquired with no waiters; no other threads are blocked or about to block
-       for changes to the lock state,
-   >1: acquired, possibly with waiters; there may be other threads blocked or
-       about to block for changes to the lock state.
-
-   We expect that the common case is an uncontended lock, so we just need
-   to transition the lock between states 0 and 1; releasing the lock does
-   not need to wake any other blocked threads.  If the lock is contended
-   and a thread decides to block using a futex operation, then this thread
-   needs to first change the state to >1; if this state is observed during
-   lock release, the releasing thread will wake one of the potentially
-   blocked threads.
-
-   Much of this code takes a 'private' parameter.  This may be:
-   LLL_PRIVATE: lock only shared within a process
-   LLL_SHARED:  lock may be shared across processes.
-
-   Condition variables contain an optimization for broadcasts that requeues
-   waiting threads on a lock's futex.  Therefore, there is a special
-   variant of the locks (whose name contains "cond") that makes sure to
-   always set the lock state to >1 and not just 1.
-
-   Robust locks set the lock to the id of the owner.  This allows detection
-   of the case where the owner exits without releasing the lock.  Flags are
-   OR'd with the owner id to record additional information about lock state.
-   Therefore the states of robust locks are:
-    0: not acquired
-   id: acquired (by user identified by id & FUTEX_TID_MASK)
-
-   The following flags may be set in the robust lock value:
-   FUTEX_WAITERS     - possibly has waiters
-   FUTEX_OWNER_DIED  - owning user has exited without releasing the futex.  */
+/* XXX Remove when no assembler code uses futexes anymore.  */
+//#define SYS_futex		__NR_futex
+#define SYS_futex       240 //mejbah
 
 
-/* If LOCK is 0 (not acquired), set to 1 (acquired with no waiters) and return
-   0.  Otherwise leave lock unchanged and return non-zero to indicate that the
-   lock was not acquired.  */
-#define lll_trylock(lock)	\
-  atomic_compare_and_exchange_bool_acq (&(lock), 1, 0)
+#ifndef __ASSEMBLER__
 
-/* If LOCK is 0 (not acquired), set to 2 (acquired, possibly with waiters) and
-   return 0.  Otherwise leave lock unchanged and return non-zero to indicate
-   that the lock was not acquired.  */
-#define lll_cond_trylock(lock)	\
-  atomic_compare_and_exchange_bool_acq (&(lock), 2, 0)
-
-extern void __lll_lock_wait_private (int *futex);
-extern void __lll_lock_wait (int *futex, int private);
-//extern int __lll_robust_lock_wait (int *futex, int private);
-
-/* This is an expression rather than a statement even though its value is
-   void, so that it can be used in a comma expression or as an expression
-   that's cast to void.  */
-/* The inner conditional compiles to a call to __lll_lock_wait_private if
-   private is known at compile time to be LLL_PRIVATE, and to a call to
-   __lll_lock_wait otherwise.  */
-/* If FUTEX is 0 (not acquired), set to 1 (acquired with no waiters) and
-   return.  Otherwise, ensure that it is >1 (acquired, possibly with waiters)
-   and then block until we acquire the lock, at which point FUTEX will still be
-   >1.  The lock is always acquired on return.  */
-#define __lll_lock(futex, private)                                      \
-  ((void)                                                               \
-   ({                                                                   \
-     int *__futex = (futex);                                            \
-     if (__glibc_unlikely                                               \
-         (atomic_compare_and_exchange_bool_acq (__futex, 1, 0)))        \
-       {                                                                \
-         if (__builtin_constant_p (private) && (private) == LLL_PRIVATE) \
-           __lll_lock_wait_private (__futex);                           \
-         else                                                           \
-           __lll_lock_wait (__futex, private);                          \
-       }                                                                \
-   }))
-#define lll_lock(futex, private)	\
-  __lll_lock (&(futex), private)
-
-#if 0 //mejbah
-/* If FUTEX is 0 (not acquired), set to ID (acquired with no waiters) and
-   return 0.  Otherwise, ensure that it is set to FUTEX | FUTEX_WAITERS
-   (acquired, possibly with waiters) and block until we acquire the lock.
-   FUTEX will now be ID | FUTEX_WAITERS and we return 0.
-   If the previous owner of the lock dies before we acquire the lock then FUTEX
-   will be the value of id as set by the previous owner, with FUTEX_OWNER_DIED
-   set (FUTEX_WAITERS may or may not be set).  We return this value to indicate
-   that the lock is not acquired.  */
-#define __lll_robust_lock(futex, id, private)                           \
-  ({                                                                    \
-    int *__futex = (futex);                                             \
-    int __val = 0;                                                      \
-                                                                        \
-    if (__glibc_unlikely                                                \
-        (atomic_compare_and_exchange_bool_acq (__futex, id, 0)))        \
-      __val = __lll_robust_lock_wait (__futex, private);                \
-    __val;                                                              \
-  })
-#define lll_robust_lock(futex, id, private)     \
-  __lll_robust_lock (&(futex), id, private)
-#endif
-
-/* This is an expression rather than a statement even though its value is
-   void, so that it can be used in a comma expression or as an expression
-   that's cast to void.  */
-/* Unconditionally set FUTEX to 2 (acquired, possibly with waiters).  If FUTEX
-   was 0 (not acquired) then return.  Otherwise, block until the lock is
-   acquired, at which point FUTEX is 2 (acquired, possibly with waiters).  The
-   lock is always acquired on return.  */
-#define __lll_cond_lock(futex, private)                                 \
-  ((void)                                                               \
-   ({                                                                   \
-     int *__futex = (futex);                                            \
-     if (__glibc_unlikely (atomic_exchange_acq (__futex, 2) != 0))      \
-       __lll_lock_wait (__futex, private);                              \
-   }))
-#define lll_cond_lock(futex, private) __lll_cond_lock (&(futex), private)
-
-#if 0 //mejbah
-/* As __lll_robust_lock, but set to ID | FUTEX_WAITERS (acquired, possibly with
-   waiters) if FUTEX is 0.  */
-#define lll_robust_cond_lock(futex, id, private)	\
-  __lll_robust_lock (&(futex), (id) | FUTEX_WAITERS, private)
-
-#endif
-extern int __lll_timedlock_wait (int *futex, const struct timespec *,
-				 int private) ;
-extern int __lll_robust_timedlock_wait (int *futex, const struct timespec *,
-					int private);
-
-
-/* As __lll_lock, but with a timeout.  If the timeout occurs then return
-   ETIMEDOUT.  If ABSTIME is invalid, return EINVAL.  */
-#define __lll_timedlock(futex, abstime, private)                \
-  ({                                                            \
-    int *__futex = (futex);                                     \
-    int __val = 0;                                              \
-                                                                \
-    if (__glibc_unlikely                                        \
-        (atomic_compare_and_exchange_bool_acq (__futex, 1, 0))) \
-      __val = __lll_timedlock_wait (__futex, abstime, private); \
-    __val;                                                      \
-  })
-#define lll_timedlock(futex, abstime, private)  \
-  __lll_timedlock (&(futex), abstime, private)
-
-
-/* As __lll_robust_lock, but with a timeout.  If the timeout occurs then return
-   ETIMEDOUT.  If ABSTIME is invalid, return EINVAL.  */
-#define __lll_robust_timedlock(futex, abstime, id, private)             \
-  ({                                                                    \
-    int *__futex = (futex);                                             \
-    int __val = 0;                                                      \
-                                                                        \
-    if (__glibc_unlikely                                                \
-        (atomic_compare_and_exchange_bool_acq (__futex, id, 0)))        \
-      __val = __lll_robust_timedlock_wait (__futex, abstime, private);  \
-    __val;                                                              \
-  })
-#define lll_robust_timedlock(futex, abstime, id, private)       \
-  __lll_robust_timedlock (&(futex), abstime, id, private)
-
-
-/* This is an expression rather than a statement even though its value is
-   void, so that it can be used in a comma expression or as an expression
-   that's cast to void.  */
-/* Unconditionally set FUTEX to 0 (not acquired), releasing the lock.  If FUTEX
-   was >1 (acquired, possibly with waiters), then wake any waiters.  The waiter
-   that acquires the lock will set FUTEX to >1.  */
-#define __lll_unlock(futex, private)                    \
-  ((void)                                               \
-   ({                                                   \
-     int *__futex = (futex);                            \
-     int __oldval = atomic_exchange_rel (__futex, 0);   \
-     if (__glibc_unlikely (__oldval > 1))               \
-       lll_futex_wake (__futex, 1, private);            \
-   }))
-#define lll_unlock(futex, private)	\
-  __lll_unlock (&(futex), private)
-
-
-/* This is an expression rather than a statement even though its value is
-   void, so that it can be used in a comma expression or as an expression
-   that's cast to void.  */
-/* Unconditionally set FUTEX to 0 (not acquired), releasing the lock.  If FUTEX
-   had FUTEX_WAITERS set then wake any waiters.  The waiter that acquires the
-   lock will set FUTEX_WAITERS.  */
-#define __lll_robust_unlock(futex, private)             \
-  ((void)                                               \
-   ({                                                   \
-     int *__futex = (futex);                            \
-     int __oldval = atomic_exchange_rel (__futex, 0);   \
-     if (__glibc_unlikely (__oldval & FUTEX_WAITERS))	\
-       lll_futex_wake (__futex, 1, private);            \
-   }))
-#define lll_robust_unlock(futex, private)       \
-  __lll_robust_unlock (&(futex), private)
-
-
-#define lll_islocked(futex) \
-  ((futex) != LLL_LOCK_INITIALIZER)
-
-
-/* Our internal lock implementation is identical to the binary-compatible
-   mutex implementation. */
-
-/* Initializers for lock.  */
+/* Initializer for lock.  */
 #define LLL_LOCK_INITIALIZER		(0)
 #define LLL_LOCK_INITIALIZER_LOCKED	(1)
+#define LLL_LOCK_INITIALIZER_WAITERS	(2)
+
+
+/* NB: in the lll_trylock macro we simply return the value in %eax
+   after the cmpxchg instruction.  In case the operation succeded this
+   value is zero.  In case the operation failed, the cmpxchg instruction
+   has loaded the current value of the memory work which is guaranteed
+   to be nonzero.  */
+//#if !IS_IN (libc) || defined UP
+# define __lll_trylock_asm LOCK_INSTR "cmpxchgl %2, %1"
+//#else
+//# define __lll_trylock_asm "cmpl $0, __libc_multiple_threads(%%rip)\n\t"      \
+			   "je 0f\n\t"					      \
+			   "lock; cmpxchgl %2, %1\n\t"			      \
+			   "jmp 1f\n\t"					      \
+			   "0:\tcmpxchgl %2, %1\n\t"			      \
+			   "1:"
+//#endif
+
+#define lll_trylock(futex) \
+  ({ int ret;								      \
+     __asm __volatile (__lll_trylock_asm				      \
+		       : "=a" (ret), "=m" (futex)			      \
+		       : "r" (LLL_LOCK_INITIALIZER_LOCKED), "m" (futex),      \
+			 "0" (LLL_LOCK_INITIALIZER)			      \
+		       : "memory");					      \
+     ret; })
+
+#define lll_cond_trylock(futex) \
+  ({ int ret;								      \
+     __asm __volatile (LOCK_INSTR "cmpxchgl %2, %1"			      \
+		       : "=a" (ret), "=m" (futex)			      \
+		       : "r" (LLL_LOCK_INITIALIZER_WAITERS),		      \
+			 "m" (futex), "0" (LLL_LOCK_INITIALIZER)	      \
+		       : "memory");					      \
+     ret; })
+
+//#if !IS_IN (libc) || defined UP
+# define __lll_lock_asm_start LOCK_INSTR "cmpxchgl %4, %2\n\t"		      \
+			      "jz 24f\n\t"
+//#else
+//# define __lll_lock_asm_start "cmpl $0, __libc_multiple_threads(%%rip)\n\t"   \
+			      "je 0f\n\t"				      \
+			      "lock; cmpxchgl %4, %2\n\t"		      \
+			      "jnz 1f\n\t"				      \
+			      "jmp 24f\n"				      \
+			      "0:\tcmpxchgl %4, %2\n\t"			      \
+			      "jz 24f\n\t"
+//#endif
+
+#define lll_lock(futex, private) \
+  (void)								      \
+    ({ int ignore1, ignore2, ignore3;					      \
+       if (__builtin_constant_p (private) && (private) == LLL_PRIVATE)	      \
+	 __asm __volatile (__lll_lock_asm_start				      \
+			   "1:\tlea %2, %%" RDI_LP "\n"			      \
+			   "2:\tsub $128, %%" RSP_LP "\n"		      \
+			   ".cfi_adjust_cfa_offset 128\n"		      \
+			   "3:\tcallq __lll_lock_wait_private\n"	      \
+			   "4:\tadd $128, %%" RSP_LP "\n"		      \
+			   ".cfi_adjust_cfa_offset -128\n"		      \
+			   "24:"					      \
+			   : "=S" (ignore1), "=&D" (ignore2), "=m" (futex),   \
+			     "=a" (ignore3)				      \
+			   : "0" (1), "m" (futex), "3" (0)		      \
+			   : "cx", "r11", "cc", "memory");		      \
+       else								      \
+	 __asm __volatile (__lll_lock_asm_start				      \
+			   "1:\tlea %2, %%" RDI_LP "\n"			      \
+			   "2:\tsub $128, %%" RSP_LP "\n"		      \
+			   ".cfi_adjust_cfa_offset 128\n"		      \
+			   "3:\tcallq __lll_lock_wait\n"		      \
+			   "4:\tadd $128, %%" RSP_LP "\n"		      \
+			   ".cfi_adjust_cfa_offset -128\n"		      \
+			   "24:"					      \
+			   : "=S" (ignore1), "=D" (ignore2), "=m" (futex),    \
+			     "=a" (ignore3)				      \
+			   : "1" (1), "m" (futex), "3" (0), "0" (private)     \
+			   : "cx", "r11", "cc", "memory");		      \
+    })									      \
+
+#define lll_robust_lock(futex, id, private) \
+  ({ int result, ignore1, ignore2;					      \
+    __asm __volatile (LOCK_INSTR "cmpxchgl %4, %2\n\t"			      \
+		      "jz 24f\n"					      \
+		      "1:\tlea %2, %%" RDI_LP "\n"			      \
+		      "2:\tsub $128, %%" RSP_LP "\n"			      \
+		      ".cfi_adjust_cfa_offset 128\n"			      \
+		      "3:\tcallq __lll_robust_lock_wait\n"		      \
+		      "4:\tadd $128, %%" RSP_LP "\n"			      \
+		      ".cfi_adjust_cfa_offset -128\n"			      \
+		      "24:"						      \
+		      : "=S" (ignore1), "=D" (ignore2), "=m" (futex),	      \
+			"=a" (result)					      \
+		      : "1" (id), "m" (futex), "3" (0), "0" (private)	      \
+		      : "cx", "r11", "cc", "memory");			      \
+    result; })
+
+#define lll_cond_lock(futex, private) \
+  (void)								      \
+    ({ int ignore1, ignore2, ignore3;					      \
+       __asm __volatile (LOCK_INSTR "cmpxchgl %4, %2\n\t"		      \
+			 "jz 24f\n"					      \
+			 "1:\tlea %2, %%" RDI_LP "\n"			      \
+			 "2:\tsub $128, %%" RSP_LP "\n"			      \
+			 ".cfi_adjust_cfa_offset 128\n"			      \
+			 "3:\tcallq __lll_lock_wait\n"			      \
+			 "4:\tadd $128, %%" RSP_LP "\n"			      \
+			 ".cfi_adjust_cfa_offset -128\n"		      \
+			 "24:"						      \
+			 : "=S" (ignore1), "=D" (ignore2), "=m" (futex),      \
+			   "=a" (ignore3)				      \
+			 : "1" (2), "m" (futex), "3" (0), "0" (private)	      \
+			 : "cx", "r11", "cc", "memory");		      \
+    })
+
+#define lll_robust_cond_lock(futex, id, private) \
+  ({ int result, ignore1, ignore2;					      \
+    __asm __volatile (LOCK_INSTR "cmpxchgl %4, %2\n\t"			      \
+		      "jz 24f\n"					      \
+		      "1:\tlea %2, %%" RDI_LP "\n"			      \
+		      "2:\tsub $128, %%" RSP_LP "\n"			      \
+		      ".cfi_adjust_cfa_offset 128\n"			      \
+		      "3:\tcallq __lll_robust_lock_wait\n"		      \
+		      "4:\tadd $128, %%" RSP_LP "\n"			      \
+		      ".cfi_adjust_cfa_offset -128\n"			      \
+		      "24:"						      \
+		      : "=S" (ignore1), "=D" (ignore2), "=m" (futex),	      \
+			"=a" (result)					      \
+		      : "1" (id | FUTEX_WAITERS), "m" (futex), "3" (0),	      \
+			"0" (private)					      \
+		      : "cx", "r11", "cc", "memory");			      \
+    result; })
+
+#define lll_timedlock(futex, timeout, private) \
+  ({ int result, ignore1, ignore2, ignore3;				      \
+     __asm __volatile (LOCK_INSTR "cmpxchgl %1, %4\n\t"			      \
+		       "jz 24f\n"					      \
+		       "1:\tlea %4, %%" RDI_LP "\n"			      \
+		       "0:\tmov %8, %%" RDX_LP "\n"			      \
+		       "2:\tsub $128, %%" RSP_LP "\n"			      \
+		       ".cfi_adjust_cfa_offset 128\n"			      \
+		       "3:\tcallq __lll_timedlock_wait\n"		      \
+		       "4:\tadd $128, %%" RSP_LP "\n"			      \
+		       ".cfi_adjust_cfa_offset -128\n"			      \
+		       "24:"						      \
+		       : "=a" (result), "=D" (ignore1), "=S" (ignore2),	      \
+			 "=&d" (ignore3), "=m" (futex)			      \
+		       : "0" (0), "1" (1), "m" (futex), "m" (timeout),	      \
+			 "2" (private)					      \
+		       : "memory", "cx", "cc", "r10", "r11");		      \
+     result; })
+
+extern int __lll_timedlock_elision (int *futex, short *adapt_count,
+					 const struct timespec *timeout,
+					 int private) ;//attribute_hidden;
+
+#define lll_timedlock_elision(futex, adapt_count, timeout, private)	\
+  __lll_timedlock_elision(&(futex), &(adapt_count), timeout, private)
+
+#define lll_robust_timedlock(futex, timeout, id, private) \
+  ({ int result, ignore1, ignore2, ignore3;				      \
+     __asm __volatile (LOCK_INSTR "cmpxchgl %1, %4\n\t"			      \
+		       "jz 24f\n\t"					      \
+		       "1:\tlea %4, %%" RDI_LP "\n"			      \
+		       "0:\tmov %8, %%" RDX_LP "\n"			      \
+		       "2:\tsub $128, %%" RSP_LP "\n"			      \
+		       ".cfi_adjust_cfa_offset 128\n"			      \
+		       "3:\tcallq __lll_robust_timedlock_wait\n"	      \
+		       "4:\tadd $128, %%" RSP_LP "\n"			      \
+		       ".cfi_adjust_cfa_offset -128\n"			      \
+		       "24:"						      \
+		       : "=a" (result), "=D" (ignore1), "=S" (ignore2),       \
+			 "=&d" (ignore3), "=m" (futex)			      \
+		       : "0" (0), "1" (id), "m" (futex), "m" (timeout),	      \
+			 "2" (private)					      \
+		       : "memory", "cx", "cc", "r10", "r11");		      \
+     result; })
+
+//#if !IS_IN (libc) || defined UP
+# define __lll_unlock_asm_start LOCK_INSTR "decl %0\n\t"		      \
+				"je 24f\n\t"
+//#else
+//# define __lll_unlock_asm_start "cmpl $0, __libc_multiple_threads(%%rip)\n\t" \
+				"je 0f\n\t"				      \
+				"lock; decl %0\n\t"			      \
+				"jne 1f\n\t"				      \
+				"jmp 24f\n\t"				      \
+				"0:\tdecl %0\n\t"			      \
+				"je 24f\n\t"
+//#endif
+
+#define lll_unlock(futex, private) \
+  (void)								      \
+    ({ int ignore;							      \
+       if (__builtin_constant_p (private) && (private) == LLL_PRIVATE)	      \
+	 __asm __volatile (__lll_unlock_asm_start			      \
+			   "1:\tlea %0, %%" RDI_LP "\n"			      \
+			   "2:\tsub $128, %%" RSP_LP "\n"		      \
+			   ".cfi_adjust_cfa_offset 128\n"		      \
+			   "3:\tcallq __lll_unlock_wake_private\n"	      \
+			   "4:\tadd $128, %%" RSP_LP "\n"		      \
+			   ".cfi_adjust_cfa_offset -128\n"		      \
+			   "24:"					      \
+			   : "=m" (futex), "=&D" (ignore)		      \
+			   : "m" (futex)				      \
+			   : "ax", "cx", "r11", "cc", "memory");	      \
+       else								      \
+	 __asm __volatile (__lll_unlock_asm_start			      \
+			   "1:\tlea %0, %%" RDI_LP "\n"			      \
+			   "2:\tsub $128, %%" RSP_LP "\n"		      \
+			   ".cfi_adjust_cfa_offset 128\n"		      \
+			   "3:\tcallq __lll_unlock_wake\n"		      \
+			   "4:\tadd $128, %%" RSP_LP "\n"		      \
+			   ".cfi_adjust_cfa_offset -128\n"		      \
+			   "24:"					      \
+			   : "=m" (futex), "=&D" (ignore)		      \
+			   : "m" (futex), "S" (private)			      \
+			   : "ax", "cx", "r11", "cc", "memory");	      \
+    })
+
+#define lll_robust_unlock(futex, private) \
+  do									      \
+    {									      \
+      int ignore;							      \
+      __asm __volatile (LOCK_INSTR "andl %2, %0\n\t"			      \
+			"je 24f\n\t"					      \
+			"1:\tlea %0, %%" RDI_LP "\n"			      \
+			"2:\tsub $128, %%" RSP_LP "\n"			      \
+			".cfi_adjust_cfa_offset 128\n"			      \
+			"3:\tcallq __lll_unlock_wake\n"			      \
+			"4:\tadd $128, %%" RSP_LP "\n"			      \
+			".cfi_adjust_cfa_offset -128\n"			      \
+			"24:"						      \
+			: "=m" (futex), "=&D" (ignore)			      \
+			: "i" (FUTEX_WAITERS), "m" (futex),		      \
+			  "S" (private)					      \
+			: "ax", "cx", "r11", "cc", "memory");		      \
+    }									      \
+  while (0)
+
+#define lll_islocked(futex) \
+  (futex != LLL_LOCK_INITIALIZER)
 
 
 /* The kernel notifies a process which uses CLONE_CHILD_CLEARTID via futex
@@ -246,17 +314,41 @@ extern int __lll_robust_timedlock_wait (int *futex, const struct timespec *,
       lll_futex_wait (&(tid), __tid, LLL_SHARED);\
   } while (0)
 
-extern int __lll_timedwait_tid (int *, const struct timespec *);
+extern int __lll_timedwait_tid (int *, const struct timespec *)
+     ;//attribute_hidden;
 
 /* As lll_wait_tid, but with a timeout.  If the timeout occurs then return
-   ETIMEDOUT.  If ABSTIME is invalid, return EINVAL.  */
+   ETIMEDOUT.  If ABSTIME is invalid, return EINVAL.
+   XXX Note that this differs from the generic version in that we do the
+   error checking here and not in __lll_timedwait_tid.  */
 #define lll_timedwait_tid(tid, abstime) \
-  ({							\
-    int __res = 0;					\
-    if ((tid) != 0)					\
-      __res = __lll_timedwait_tid (&(tid), (abstime));	\
-    __res;						\
-  })
+  ({									      \
+    int __result = 0;							      \
+    if ((tid) != 0)							      \
+      {									      \
+	if ((abstime)->tv_nsec < 0 || (abstime)->tv_nsec >= 1000000000)	      \
+	  __result = EINVAL;						      \
+	else								      \
+	  __result = __lll_timedwait_tid (&(tid), (abstime));		      \
+      }									      \
+    __result; })
 
+extern int __lll_lock_elision (int *futex, short *adapt_count, int private)
+  ;//attribute_hidden;
+
+extern int __lll_unlock_elision (int *lock, int private)
+  ;//attribute_hidden;
+
+extern int __lll_trylock_elision (int *lock, short *adapt_count)
+  ;//attribute_hidden;
+
+#define lll_lock_elision(futex, adapt_count, private) \
+  __lll_lock_elision (&(futex), &(adapt_count), private)
+#define lll_unlock_elision(futex, private) \
+  __lll_unlock_elision (&(futex), private)
+#define lll_trylock_elision(futex, adapt_count) \
+  __lll_trylock_elision (&(futex), &(adapt_count))
+
+#endif  /* !__ASSEMBLER__ */
 
 #endif	/* lowlevellock.h */

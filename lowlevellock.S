@@ -17,10 +17,9 @@
    <http://www.gnu.org/licenses/>.  */
 
 #include <sysdep.h>
-#include <pthread-errnos.h>
+//#include <pthread-errnos.h>
 //#include <kernel-features.h>
 #include <lowlevellock.h>
-
 //#include <stap-probe.h>
 
 	.text
@@ -74,13 +73,13 @@
 	.hidden	__lll_lock_wait_private
 	.align	16
 __lll_lock_wait_private:
-	cfi_startproc
+	////cfi_startproc
 	pushq	%r10
-	cfi_adjust_cfa_offset(8)
+	//cfi_adjust_cfa_offset(8)
 	pushq	%rdx
-	cfi_adjust_cfa_offset(8)
-	cfi_offset(%r10, -16)
-	cfi_offset(%rdx, -24)
+	//cfi_adjust_cfa_offset(8)
+	//cfi_offset(%r10, -16)
+	//cfi_offset(%rdx, -24)
 	xorq	%r10, %r10	/* No timeout.  */
 	movl	$2, %edx
 	LOAD_PRIVATE_FUTEX_WAIT (%esi)
@@ -88,7 +87,7 @@ __lll_lock_wait_private:
 	cmpl	%edx, %eax	/* NB:	 %edx == 2 */
 	jne	2f
 
-1:	LIBC_PROBE (lll_lock_wait_private, 1, %rdi)
+1:	//LIBC_PROBE (lll_lock_wait_private, 1, %rdi)
 	movl	$SYS_futex, %eax
 	syscall
 
@@ -99,28 +98,28 @@ __lll_lock_wait_private:
 	jnz	1b
 
 	popq	%rdx
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%rdx)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%rdx)
 	popq	%r10
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%r10)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%r10)
 	retq
-	cfi_endproc
+	//cfi_endproc
 	.size	__lll_lock_wait_private,.-__lll_lock_wait_private
 
-#if !IS_IN (libc)
+//#if !IS_IN (libc)
 	.globl	__lll_lock_wait
 	.type	__lll_lock_wait,@function
 	.hidden	__lll_lock_wait
 	.align	16
 __lll_lock_wait:
-	cfi_startproc
+	//cfi_startproc
 	pushq	%r10
-	cfi_adjust_cfa_offset(8)
+	//cfi_adjust_cfa_offset(8)
 	pushq	%rdx
-	cfi_adjust_cfa_offset(8)
-	cfi_offset(%r10, -16)
-	cfi_offset(%rdx, -24)
+	//cfi_adjust_cfa_offset(8)
+	//cfi_offset(%r10, -16)
+	//cfi_offset(%rdx, -24)
 	xorq	%r10, %r10	/* No timeout.  */
 	movl	$2, %edx
 	LOAD_FUTEX_WAIT (%esi)
@@ -128,7 +127,7 @@ __lll_lock_wait:
 	cmpl	%edx, %eax	/* NB:	 %edx == 2 */
 	jne	2f
 
-1:	LIBC_PROBE (lll_lock_wait, 2, %rdi, %rsi)
+1:	//LIBC_PROBE (lll_lock_wait, 2, %rdi, %rsi)
 	movl	$SYS_futex, %eax
 	syscall
 
@@ -139,15 +138,16 @@ __lll_lock_wait:
 	jnz	1b
 
 	popq	%rdx
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%rdx)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%rdx)
 	popq	%r10
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%r10)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%r10)
 	retq
-	cfi_endproc
+	//cfi_endproc
 	.size	__lll_lock_wait,.-__lll_lock_wait
 
+#if 0
 	/*      %rdi: futex
 		%rsi: flags
 		%rdx: timeout
@@ -158,7 +158,7 @@ __lll_lock_wait:
 	.hidden	__lll_timedlock_wait
 	.align	16
 __lll_timedlock_wait:
-	cfi_startproc
+	//cfi_startproc
 # ifndef __ASSUME_FUTEX_CLOCK_REALTIME
 #  ifdef PIC
 	cmpl	$0, __have_futex_clock_realtime(%rip)
@@ -172,8 +172,8 @@ __lll_timedlock_wait:
 	js	5f
 
 	pushq	%r9
-	cfi_adjust_cfa_offset(8)
-	cfi_rel_offset(%r9, 0)
+	//cfi_adjust_cfa_offset(8)
+	//cfi_rel_offset(%r9, 0)
 
 	movq	%rdx, %r10
 	movl	$0xffffffff, %r9d
@@ -201,8 +201,8 @@ __lll_timedlock_wait:
 
 3:	movl	%edx, %eax
 	popq	%r9
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%r9)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%r9)
 	retq
 
 5:	movl	$ETIMEDOUT, %eax
@@ -215,26 +215,26 @@ __lll_timedlock_wait:
 	jae	3f
 
 	pushq	%r8
-	cfi_adjust_cfa_offset(8)
+	//cfi_adjust_cfa_offset(8)
 	pushq	%r9
-	cfi_adjust_cfa_offset(8)
+	//cfi_adjust_cfa_offset(8)
 	pushq	%r12
-	cfi_adjust_cfa_offset(8)
+	//cfi_adjust_cfa_offset(8)
 	pushq	%r13
-	cfi_adjust_cfa_offset(8)
+	//cfi_adjust_cfa_offset(8)
 	pushq	%r14
-	cfi_adjust_cfa_offset(8)
-	cfi_offset(%r8, -16)
-	cfi_offset(%r9, -24)
-	cfi_offset(%r12, -32)
-	cfi_offset(%r13, -40)
-	cfi_offset(%r14, -48)
+	//cfi_adjust_cfa_offset(8)
+	//cfi_offset(%r8, -16)
+	//cfi_offset(%r9, -24)
+	//cfi_offset(%r12, -32)
+	//cfi_offset(%r13, -40)
+	//cfi_offset(%r14, -48)
 	pushq	%rsi
-	cfi_adjust_cfa_offset(8)
+	//cfi_adjust_cfa_offset(8)
 
 	/* Stack frame for the timespec and timeval structs.  */
 	subq	$24, %rsp
-	cfi_adjust_cfa_offset(24)
+	//cfi_adjust_cfa_offset(24)
 
 	movq	%rdi, %r12
 	movq	%rdx, %r13
@@ -292,45 +292,45 @@ __lll_timedlock_wait:
 2:	movl	$ETIMEDOUT, %edx
 
 6:	addq	$32, %rsp
-	cfi_adjust_cfa_offset(-32)
+	//cfi_adjust_cfa_offset(-32)
 	popq	%r14
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%r14)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%r14)
 	popq	%r13
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%r13)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%r13)
 	popq	%r12
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%r12)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%r12)
 	popq	%r9
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%r9)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%r9)
 	popq	%r8
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%r8)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%r8)
 	movl	%edx, %eax
 	retq
 
 3:	movl	$EINVAL, %eax
 	retq
 # endif
-	cfi_endproc
+	//cfi_endproc
 	.size	__lll_timedlock_wait,.-__lll_timedlock_wait
+//#endif
+
 #endif
-
-
 	.globl	__lll_unlock_wake_private
 	.type	__lll_unlock_wake_private,@function
 	.hidden	__lll_unlock_wake_private
 	.align	16
 __lll_unlock_wake_private:
-	cfi_startproc
+	//cfi_startproc
 	pushq	%rsi
-	cfi_adjust_cfa_offset(8)
+	//cfi_adjust_cfa_offset(8)
 	pushq	%rdx
-	cfi_adjust_cfa_offset(8)
-	cfi_offset(%rsi, -16)
-	cfi_offset(%rdx, -24)
+	//cfi_adjust_cfa_offset(8)
+	//cfi_offset(%rsi, -16)
+	//cfi_offset(%rdx, -24)
 
 	movl	$0, (%rdi)
 	LOAD_PRIVATE_FUTEX_WAKE (%esi)
@@ -339,28 +339,28 @@ __lll_unlock_wake_private:
 	syscall
 
 	popq	%rdx
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%rdx)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%rdx)
 	popq	%rsi
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%rsi)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%rsi)
 	retq
-	cfi_endproc
+	//cfi_endproc
 	.size	__lll_unlock_wake_private,.-__lll_unlock_wake_private
 
-#if !IS_IN (libc)
+//#if !IS_IN (libc)
 	.globl	__lll_unlock_wake
 	.type	__lll_unlock_wake,@function
 	.hidden	__lll_unlock_wake
 	.align	16
 __lll_unlock_wake:
-	cfi_startproc
+	//cfi_startproc
 	pushq	%rsi
-	cfi_adjust_cfa_offset(8)
+	//cfi_adjust_cfa_offset(8)
 	pushq	%rdx
-	cfi_adjust_cfa_offset(8)
-	cfi_offset(%rsi, -16)
-	cfi_offset(%rdx, -24)
+	//cfi_adjust_cfa_offset(8)
+	//cfi_offset(%rsi, -16)
+	//cfi_offset(%rdx, -24)
 
 	movl	$0, (%rdi)
 	LOAD_FUTEX_WAKE (%esi)
@@ -369,33 +369,33 @@ __lll_unlock_wake:
 	syscall
 
 	popq	%rdx
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%rdx)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%rdx)
 	popq	%rsi
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%rsi)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%rsi)
 	retq
-	cfi_endproc
+	//cfi_endproc
 	.size	__lll_unlock_wake,.-__lll_unlock_wake
-
+#if 0
 	.globl	__lll_timedwait_tid
 	.type	__lll_timedwait_tid,@function
 	.hidden	__lll_timedwait_tid
 	.align	16
 __lll_timedwait_tid:
-	cfi_startproc
+	//cfi_startproc
 	pushq	%r12
-	cfi_adjust_cfa_offset(8)
+	//cfi_adjust_cfa_offset(8)
 	pushq	%r13
-	cfi_adjust_cfa_offset(8)
-	cfi_offset(%r12, -16)
-	cfi_offset(%r13, -24)
+	//cfi_adjust_cfa_offset(8)
+	//cfi_offset(%r12, -16)
+	//cfi_offset(%r13, -24)
 
 	movq	%rdi, %r12
 	movq	%rsi, %r13
 
 	subq	$16, %rsp
-	cfi_adjust_cfa_offset(16)
+	//cfi_adjust_cfa_offset(16)
 
 	/* Get current time.  */
 2:	movq	%rsp, %rdi
@@ -442,21 +442,22 @@ __lll_timedwait_tid:
 4:	xorl	%eax, %eax
 
 8:	addq	$16, %rsp
-	cfi_adjust_cfa_offset(-16)
+	//cfi_adjust_cfa_offset(-16)
 	popq	%r13
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%r13)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%r13)
 	popq	%r12
-	cfi_adjust_cfa_offset(-8)
-	cfi_restore(%r12)
+	//cfi_adjust_cfa_offset(-8)
+	//cfi_restore(%r12)
 	retq
 
-	cfi_adjust_cfa_offset(32)
+	//cfi_adjust_cfa_offset(32)
 1:	cmpq	$-ETIMEDOUT, %rax
 	jne	2b
 
 6:	movl	$ETIMEDOUT, %eax
 	jmp	8b
-	cfi_endproc
+	//cfi_endproc
 	.size	__lll_timedwait_tid,.-__lll_timedwait_tid
 #endif
+//#endif

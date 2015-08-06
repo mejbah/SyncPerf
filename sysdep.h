@@ -19,7 +19,55 @@
 #define _LINUX_X86_64_SYSDEP_H 1
 
 
+
+
+//mejbah added for /sysdeps/x86_64/sysdep.h :: start
+/* Registers to hold long and pointer.  */
 #ifdef __ASSEMBLER__
+
+#define RAX_LP  rax
+#define RBP_LP  rbp
+#define RBX_LP  rbx
+#define RCX_LP  rcx
+#define RDI_LP  rdi
+#define RDX_LP  rdx
+#define RSI_LP  rsi
+#define RSP_LP  rsp
+#define R8_LP   r8
+#define R9_LP   r9
+#define R10_LP  r10
+#define R11_LP  r11
+#define R12_LP  r12
+#define R13_LP  r13
+#define R14_LP  r14
+#define R15_LP  r15
+
+#else 
+/* Registers to hold long and pointer.  */
+#define RAX_LP  "rax"
+#define RBP_LP  "rbp"
+#define RBX_LP  "rbx"
+#define RCX_LP  "rcx"
+#define RDI_LP  "rdi"
+#define RDX_LP  "rdx"
+#define RSI_LP  "rsi"
+#define RSP_LP  "rsp"
+#define R8_LP   "r8"
+#define R9_LP   "r9"
+#define R10_LP  "r10"
+#define R11_LP  "r11"
+#define R12_LP  "r12"
+#define R13_LP  "r13"
+#define R14_LP  "r14"
+#define R15_LP  "r15"
+
+#endif  /* __ASSEMBLER__ */
+
+//mejbah added for /sysdeps/x86_64/sysdep.h :: end
+
+
+#ifdef __ASSEMBLER__
+
 
 /* Linux uses a negative return value to indicate syscall errors,
    unlike most Unices, which use the condition codes' carry flag.
@@ -84,11 +132,11 @@
   neg %eax;					\
   movl %eax, (%rcx)
 # else
-#  if IS_IN (libc)
-#   define SYSCALL_ERROR_ERRNO __libc_errno
-#  else
+//#  if IS_IN (libc)
+//#   define SYSCALL_ERROR_ERRNO __libc_errno
+//#  else
 #   define SYSCALL_ERROR_ERRNO errno
-#  endif
+//#  endif
 #  define SYSCALL_SET_ERRNO			\
   movq SYSCALL_ERROR_ERRNO@GOTTPOFF(%rip), %rcx;\
   neg %eax;					\
