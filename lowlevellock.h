@@ -49,7 +49,7 @@
 
 /* XXX Remove when no assembler code uses futexes anymore.  */
 //#define SYS_futex		__NR_futex
-#define SYS_futex       240 //mejbah
+#define SYS_futex       202 //mejbah
 
 
 #ifndef __ASSEMBLER__
