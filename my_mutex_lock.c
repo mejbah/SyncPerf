@@ -141,7 +141,8 @@ simple:
 	case PTHREAD_MUTEX_ROBUST_ERRORCHECK_NP:
 	case PTHREAD_MUTEX_ROBUST_NORMAL_NP:
 	case PTHREAD_MUTEX_ROBUST_ADAPTIVE_NP:
-    printf("PTHREAD_MUTEX_ROBUST_*_NP\n");
+    	printf("PTHREAD_MUTEX_ROBUST_*_NP\n");
+		assert(PTHREAD_MUTEX_ROBUST_ADAPTIVE_NP != mutex->__data.__kind);
 #if 0
 		THREAD_SETMEM (THREAD_SELF, robust_head.list_op_pending,
 			&mutex->__data.__list.__next);
@@ -233,8 +234,9 @@ again:
 		mutex->__data.__count = 1;
 		ENQUEUE_MUTEX (mutex);
 		THREAD_SETMEM (THREAD_SELF, robust_head.list_op_pending, NULL);
-		break;
 #endif
+		
+		break;
 	case PTHREAD_MUTEX_PI_RECURSIVE_NP:
 	case PTHREAD_MUTEX_PI_ERRORCHECK_NP:
 	case PTHREAD_MUTEX_PI_NORMAL_NP:
