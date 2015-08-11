@@ -339,14 +339,14 @@ extern int __lll_lock_elision (int *futex, short *adapt_count, int private)
 extern int __lll_unlock_elision (int *lock, int private)
   ;//attribute_hidden;
 
-extern int __lll_trylock_elision (int *lock, short *adapt_count)
+//extern int __lll_trylock_elision (int *lock, short *adapt_count)
   ;//attribute_hidden;
 
 #define lll_lock_elision(futex, adapt_count, private) \
   __lll_lock_elision (&(futex), &(adapt_count), private)
 #define lll_unlock_elision(futex, private) \
   __lll_unlock_elision (&(futex), private)
-#define lll_trylock_elision(futex, adapt_count) \
+//#define lll_trylock_elision(futex, adapt_count) \
   __lll_trylock_elision (&(futex), &(adapt_count))
 
 #endif  /* !__ASSEMBLER__ */

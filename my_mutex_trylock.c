@@ -2,18 +2,22 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 
+#include "my_mutex.h"
+
 #include <assert.h>
 #include <errno.h>
-#include <string.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <lowlevellock.h>
-#include <pthread.h>
-//#include <kernel-features.h>
-#include <atomic.h>
+#include <stdlib.h>
 #include "pthreadP.h"
-#include <sysdep.h>
-#include "my_mutex.h"
+#include <lowlevellock.h>
+
+
+#ifndef lll_trylock_elision
+#define lll_trylock_elision(a,t) lll_trylock(a)
+#endif
+
+#ifndef FORCE_ELISION
+#define FORCE_ELISION(m, s)
+#endif
 
 
 int
@@ -65,19 +69,21 @@ pthread_mutex_trylock (pthread_mutex_t *mutex)
 			return 0;
 		}
 		break;
-#if 0 //mejbah
 	case PTHREAD_MUTEX_TIMED_ELISION_NP:
-elision: __attribute__((unused))
+		assert(PTHREAD_MUTEX_TYPE_ELISION (mutex) != PTHREAD_MUTEX_TIMED_ELISION_NP);
+#if 1 //mejbah
+
+		elision: __attribute__((unused))
 			 if (lll_trylock_elision (mutex->__data.__lock,
 				 mutex->__data.__elision) != 0)
 				 break;
 		 /* Don't record the ownership.  */
 		 return 0;
+#endif
 
 	case PTHREAD_MUTEX_TIMED_NP:
 		FORCE_ELISION (mutex, goto elision);
 		/*FALL THROUGH*/
-#endif
 	case PTHREAD_MUTEX_ADAPTIVE_NP:
 	case PTHREAD_MUTEX_ERRORCHECK_NP:
 		if (lll_trylock (mutex->__data.__lock) != 0)
@@ -203,7 +209,7 @@ again:
 	case PTHREAD_MUTEX_PI_ROBUST_ERRORCHECK_NP:
 	case PTHREAD_MUTEX_PI_ROBUST_NORMAL_NP:
 	case PTHREAD_MUTEX_PI_ROBUST_ADAPTIVE_NP:
-   #if 0
+   #if 1
 		{
 			int kind = mutex->__data.__kind & PTHREAD_MUTEX_KIND_MASK_NP;
 			int robust = mutex->__data.__kind & PTHREAD_MUTEX_ROBUST_NORMAL_NP;
