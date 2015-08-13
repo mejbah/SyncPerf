@@ -1,3 +1,7 @@
 
 -- for PTHREAD_MUTEX_INITIALIZER 
     : in my_mutex.c : is_my_mutex() check and new mutex create and update has to be atomic
+
+-- fix trylock.c
+
+-- fluidanimate test do not pass: fix this
