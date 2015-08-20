@@ -54,6 +54,7 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
     tmp->count = tmp->count + 1;
     //printf("---lock count: %u---\n", tmp->count);
     mutex = &tmp->mutex;
+	
 #endif
 
 #endif	
@@ -61,6 +62,7 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
 
     
 	int oldval;
+	int futex_flag = 0;
 	pid_t id = THREAD_GETMEM (THREAD_SELF, tid);
 
 	int retval = 0;
@@ -104,8 +106,26 @@ simple:
 		//printf("PTHREAD_MUTEX_TIMED_NP\n");
 		/* Normal mutex.  */
 		// LLL_MUTEX_LOCK (mutex->__data.__lock);
+#ifndef NO_INCR
+#ifndef ORIGINAL
+		if(mutex->__data.__lock == 2) { 
+			futex_flag=1; 
+			//printf("contention\n");
+			futex_start_timestamp(tmp, id);
+		}
+#endif
+#endif
 		LLL_MUTEX_LOCK (mutex);
 		assert (mutex->__data.__owner == 0);
+#ifndef NO_INCR
+#ifndef ORIGINAL
+		if(futex_flag) {
+			 
+			add_futex_wait(tmp, id);
+			futex_flag=0;
+		}
+#endif
+#endif
 		break;
 
 	case PTHREAD_MUTEX_ADAPTIVE_NP:
@@ -483,3 +503,5 @@ pthread_mutex_t *mutex;
 		++mutex->__data.__count;
 }
 #endif
+
+

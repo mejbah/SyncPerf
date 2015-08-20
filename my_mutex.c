@@ -1,12 +1,17 @@
+#include<stdlib.h>
+#include<string.h>
+
+
 #include "my_mutex.h"
 
 
 my_mutex_t* create_mutex( pthread_mutex_t *mutex )
 {
     //printf("create my mutex\n");
-    my_mutex_t *new_mutex =  malloc(sizeof(my_mutex_t));
+    my_mutex_t *new_mutex =(my_mutex_t*)malloc(sizeof(my_mutex_t));
     new_mutex->count = 0;
     new_mutex->mutex = *mutex;
+		memset(new_mutex->futex_wait, 0, sizeof(unsigned long)*MAX_THREADS);
     return new_mutex;
 }
 
@@ -56,5 +61,21 @@ pthread_mutex_t* get_orig_mutex( my_mutex *m )
 }
 
 #endif
+
+
+void futex_start_timestamp( my_mutex_t *mutex, int idx ) 
+{
+	idx= 0; //TODO: fix this, add thread index
+	struct timeinfo *st = &mutex->futex_start[idx];
+	start(st);
+}
+
+void add_futex_wait( my_mutex_t *mutex, int idx )
+{
+	idx = 0; // TODO: fix this, add thread index
+	struct timeinfo end;
+	struct timeinfo *st = &mutex->futex_start[idx];
+	mutex->futex_wait[idx] = stop(st, &end);
+}
 
 

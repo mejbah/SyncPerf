@@ -11,7 +11,7 @@ SRCS = $(wildcard *.c)
 OBJS = $(patsubst %.c,%.o,$(SRCS))
 #OBJECTS_AS := $(patsubst %.s,%.o,$(wildcard *.S))
 OBJECTS_AS = lowlevellock.o
-all: $(TARGET) test
+all: $(TARGET) 
 
 $(TARGET) : $(OBJS) $(OBJECTS_AS)
 #$(TARGET) : $(OBJS) 
@@ -20,8 +20,5 @@ $(TARGET) : $(OBJS) $(OBJECTS_AS)
 	$(CC) $(CFLAGS) -c $<
 %.o : %.S
 	$(CC) $(CFLAGS) -c $<
-test : test.o
-	g++ -o test $(CFLAGS) test.cpp -rdynamic ./$(TARGET) -ldl -lpthread
-	#g++ -o test -lpthread test.cpp 
 clean:
-	rm -f liblockperf.so test *.o
+	rm -f liblockperf.so *.o
