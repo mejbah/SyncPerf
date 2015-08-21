@@ -18,4 +18,4 @@
 #define __pthread_mutex_lock_full __pthread_mutex_cond_lock_full
 #define NO_INCR
 
-#include <my_mutex_lock.c>
+#include <mutex_lock.c>

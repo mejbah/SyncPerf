@@ -14,7 +14,7 @@
 #include "pthreadP.h"
 #include <sysdep.h>
 
-#include<my_mutex.h>
+#include<mutex_manager.h>
 
 #ifndef LLL_MUTEX_LOCK
 # define LLL_MUTEX_LOCK(mutex) \
@@ -31,7 +31,6 @@
 //      lll_trylock_elision((mutex)->__data.__lock, (mutex)->__data.__elision, \
 //                         PTHREAD_MUTEX_PSHARED (mutex))
 #endif
-
 
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -503,5 +502,4 @@ pthread_mutex_t *mutex;
 		++mutex->__data.__count;
 }
 #endif
-
 

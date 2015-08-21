@@ -14,7 +14,7 @@
 #include "pthreadP.h"
 #include <sysdep.h>
 
-#include<my_mutex.h>
+#include<mutex_manager.h>
 
 static const struct pthread_mutexattr default_mutexattr = {
 	/* Default is a normal mutex, not shared between processes.  */

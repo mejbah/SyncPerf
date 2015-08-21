@@ -17,7 +17,7 @@ typedef struct {
 my_mutex_t* create_mutex( pthread_mutex_t *mutex );
 
 
-my_mutex_t* get_mutex( pthread_mutex_t *mutex );
+void* get_mutex( void *mutex );
 
 void futex_start_timestamp( my_mutex_t *mutex, int id );
 

@@ -13,7 +13,7 @@
 #include <atomic.h>
 #include "pthreadP.h"
 #include <sysdep.h>
-#include "my_mutex.h"
+#include "mutex_manager.h"
 
 struct _condvar_cleanup_buffer
 {

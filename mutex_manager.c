@@ -2,7 +2,7 @@
 #include<string.h>
 
 
-#include "my_mutex.h"
+#include "mutex_manager.h"
 
 
 my_mutex_t* create_mutex( pthread_mutex_t *mutex )
@@ -15,9 +15,9 @@ my_mutex_t* create_mutex( pthread_mutex_t *mutex )
     return new_mutex;
 }
 
-int is_my_mutex(pthread_mutex_t *mutex)
+int is_my_mutex(void *mutex)
 {
-    my_mutex_t **tmp;
+    void **tmp;
     tmp = mutex;
 
     if( *tmp != NULL)
@@ -25,9 +25,9 @@ int is_my_mutex(pthread_mutex_t *mutex)
     else 
         return 0;
 }
-my_mutex_t* get_mutex( pthread_mutex_t *mutex )
+void* get_mutex( void *mutex )
 {
-    my_mutex_t **tmp;
+    void **tmp;
     tmp = mutex;
 
     assert(*tmp != NULL);

@@ -1,6 +1,6 @@
 #include <errno.h>
 #include "pthreadP.h"
-#include "my_mutex.h"
+#include "mutex_manager.h"
 
 //#include <stap-probe.h>
 

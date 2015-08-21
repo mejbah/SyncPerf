@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 
-#include "my_mutex.h"
+#include "mutex_manager.h"
 
 #include <assert.h>
 #include <errno.h>
