@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 
+
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
@@ -35,6 +36,11 @@
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
+//#ifdef __cplusplus
+//extern "C" {
+//#endif
+
+
 int
 pthread_mutex_lock (pthread_mutex_t *mutex)
 {
@@ -49,7 +55,7 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
         setSyncEntry(mutex, new_mutex);
     }
 
-    my_mutex_t *tmp = get_mutex(mutex);
+    my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
     tmp->count = tmp->count + 1;
     //printf("---lock count: %u---\n", tmp->count);
     mutex = &tmp->mutex;
@@ -107,22 +113,27 @@ simple:
 		// LLL_MUTEX_LOCK (mutex->__data.__lock);
 #ifndef NO_INCR
 #ifndef ORIGINAL
+#if 1
 		if(mutex->__data.__lock == 2) { 
 			futex_flag=1; 
 			//printf("contention\n");
-			futex_start_timestamp(tmp, id);
+			futex_start_timestamp(tmp);
+			
 		}
+#endif
 #endif
 #endif
 		LLL_MUTEX_LOCK (mutex);
 		assert (mutex->__data.__owner == 0);
 #ifndef NO_INCR
 #ifndef ORIGINAL
+#if 1
 		if(futex_flag) {
 			 
-			add_futex_wait(tmp, id);
+			add_futex_wait(tmp);
 			futex_flag=0;
 		}
+#endif
 #endif
 #endif
 		break;
@@ -502,4 +513,8 @@ pthread_mutex_t *mutex;
 		++mutex->__data.__count;
 }
 #endif
+
+//#ifdef __cplusplus
+//}
+//#endif
 

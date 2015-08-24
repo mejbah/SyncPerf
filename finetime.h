@@ -26,8 +26,9 @@
  * @author Tongping Liu <http://www.cs.utsa.edu/~tongpingliu>
  */
 
-
-//extern "C" {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
   struct timeinfo {
     unsigned long low;
@@ -38,5 +39,7 @@
   double stop (struct timeinfo * begin, struct timeinfo * end);
   unsigned long elapsed2ms(double elapsed);
 
-//};
+#ifdef __cplusplus
+};
+#endif
 #endif /* __TIME_H__ */

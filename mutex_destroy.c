@@ -14,7 +14,7 @@ pthread_mutex_destroy (mutex)
       printf("In my mutex destroy\n");
 #endif
 #ifndef ORIGINAL
-      my_mutex_t *tmp = get_mutex(mutex);
+      my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
       mutex = &tmp->mutex;
 #endif
       if ((mutex->__data.__kind & PTHREAD_MUTEX_ROBUST_NORMAL_NP) == 0

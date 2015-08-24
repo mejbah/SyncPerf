@@ -50,9 +50,9 @@ double __count_elapse(struct timeinfo * start, struct timeinfo * stop)
 	//if (stop->low < start->low)
 	//	elapsed -= (double)UINT_MAX;
 
-	printf("STOP: low %ld hight %ld START: low %ld high %ld\n", stop->low, stop->high, start->low, start->high);
+	//printf("STOP: low %ld hight %ld START: low %ld high %ld\n", stop->low, stop->high, start->low, start->high);
 	
-	printf("elapsed %f\n", elapsed);
+	//printf("elapsed %f\n", elapsed);
  
 	if(elapsed > 5000.0) {
 		//while(1);

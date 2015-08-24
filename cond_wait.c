@@ -99,7 +99,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	int pi_flag = 0;
 #endif
 #ifndef ORIGINAL
-     my_mutex_t *tmp = get_mutex(mutex);
+     my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
      mutex = &tmp->mutex;
 #endif
 
