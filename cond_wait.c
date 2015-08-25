@@ -100,6 +100,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 #endif
 #ifndef ORIGINAL
      my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
+		 tmp->count = tmp->count + 1; // no of times mutex accessed
      mutex = &tmp->mutex;
 #endif
 
@@ -142,6 +143,10 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	val = seq = cond->__data.__wakeup_seq;
 	/* Remember the broadcast counter.  */
 	cbuffer.bc_seq = cond->__data.__broadcast_seq;
+  
+  //mejbah added for wait time
+	futex_start_timestamp(tmp);
+	//mejbah added end
 
 	do
 	{
@@ -217,6 +222,12 @@ bc_out:
 
 	/* The cancellation handling is back to normal, remove the handler.  */
 	 __pthread_cleanup_pop (&buffer, 0);
+
+
+	//mejbah added for wait time
+	add_futex_wait(tmp);
+	//mejbah added end
+
 
 	/* Get the mutex before returning.  Not needed for PI.  */
 #if (defined lll_futex_wait_requeue_pi \

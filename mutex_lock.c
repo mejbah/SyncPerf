@@ -56,7 +56,7 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
     }
 
     my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
-    tmp->count = tmp->count + 1;
+    tmp->count = tmp->count + 1; // no of times mutex accessed
     //printf("---lock count: %u---\n", tmp->count);
     mutex = &tmp->mutex;
 	
