@@ -143,11 +143,11 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	val = seq = cond->__data.__wakeup_seq;
 	/* Remember the broadcast counter.  */
 	cbuffer.bc_seq = cond->__data.__broadcast_seq;
-  
+#ifndef ORIGINAL
   //mejbah added for wait time
 	futex_start_timestamp(tmp);
 	//mejbah added end
-
+#endif
 	do
 	{
 		unsigned int futex_val = cond->__data.__futex;
@@ -223,11 +223,11 @@ bc_out:
 	/* The cancellation handling is back to normal, remove the handler.  */
 	 __pthread_cleanup_pop (&buffer, 0);
 
-
+#ifndef ORIGINAL
 	//mejbah added for wait time
 	add_futex_wait(tmp);
 	//mejbah added end
-
+#endif
 
 	/* Get the mutex before returning.  Not needed for PI.  */
 #if (defined lll_futex_wait_requeue_pi \

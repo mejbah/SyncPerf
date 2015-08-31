@@ -19,27 +19,57 @@
 #define FORCE_ELISION(m, s)
 #endif
 
+int
+pthread_mutex_trylock (pthread_mutex_t *mutex) {
+#ifndef ORIGINAL
+  if( !is_my_mutex(mutex) )
+  {
+		my_mutex_t *new_mutex = create_mutex(mutex);
+		setSyncEntry(mutex, new_mutex);
+  }
+  my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
+  tmp->count = tmp->count + 1;
+  //printf("---lock count: %u---\n", tmp->count);
+  mutex = &tmp->mutex;
+
+	trylock_first_timestamp(tmp); // get timestamp for first try only by a thread
+#endif
+
+  int result =  do_mutex_trylock(mutex);
+#ifndef ORIGINAL
+	if(result == EBUSY ) { //failed as  mutex is already locked
+		//printf("\n....trylock failed....\n\n");
+		inc_trylock_fail_count(tmp);
+	}
+  else {
+		add_trylock_fail_time(tmp);
+	}
+#endif
+	return result;
+
+}
+
 
 int
-pthread_mutex_trylock (pthread_mutex_t *mutex)
+do_mutex_trylock (pthread_mutex_t *mutex)
 {
 	int oldval;
 #ifdef MY_DEBUG
 	printf("In my pthread mutex trylock\n");
 #endif
 
-#ifndef ORIGINAL
-    if( !is_my_mutex(mutex) )
-    {
-        my_mutex_t *new_mutex = create_mutex(mutex);
-        setSyncEntry(mutex, new_mutex);
-    }
-    my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
-    tmp->count = tmp->count + 1;
-    //printf("---lock count: %u---\n", tmp->count);
-    mutex = &tmp->mutex;
-#endif
-
+//#ifndef ORIGINAL
+//    if( !is_my_mutex(mutex) )
+//    {
+//        my_mutex_t *new_mutex = create_mutex(mutex);
+//        setSyncEntry(mutex, new_mutex);
+//    }
+//    my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
+//    tmp->count = tmp->count + 1;
+//    //printf("---lock count: %u---\n", tmp->count);
+//    mutex = &tmp->mutex;
+//#endif
+//
 	pid_t id = THREAD_GETMEM (THREAD_SELF, tid);
 
 	switch (__builtin_expect (PTHREAD_MUTEX_TYPE_ELISION (mutex),

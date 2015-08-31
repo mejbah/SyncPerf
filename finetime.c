@@ -27,8 +27,9 @@
 #include <stdlib.h>
 
 #include "finetime.h"
-double cpu_freq = 1200781;
+double cpu_freq = 1255859;
 // 2327507.08008; // FIX ME What?
+//1255.859 MHz
 
 void __get_time(struct timeinfo * ti)
 {
