@@ -76,12 +76,12 @@ public:
 
   void finalize (void)
   {
-//		xthread::getInstance().finalize();
+		xthread::getInstance().finalize();
 
     // If the tid was set, it means that this instance was
     // initialized: end the transaction (at the end of main()).
 //   	_memory.finalize();
-//		report();
+		//report();
   }
 
 #if 0

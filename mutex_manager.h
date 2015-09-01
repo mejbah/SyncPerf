@@ -15,8 +15,8 @@ extern "C" {
 #define M_MAX_THREADS 4096 // TODO: fix this equal to xdefines::MAX_THREADS
 
 typedef unsigned long WAIT_TIME_TYPE;
-
 typedef unsigned int UINT32;
+
 typedef struct {
 	UINT32 count;
 	pthread_mutex_t mutex;

@@ -16,11 +16,13 @@ my_mutex_t* create_mutex( pthread_mutex_t *mutex )
     my_mutex_t *new_mutex =(my_mutex_t*)malloc(sizeof(my_mutex_t));
     new_mutex->count = 0;
     new_mutex->mutex = *mutex;
+#if 0 // TODO: do i really need to initialize array  with 0??
 		memset(new_mutex->futex_wait, 0, sizeof(WAIT_TIME_TYPE)*M_MAX_THREADS);
 		memset(new_mutex->trylock_wait_time, 0, sizeof(WAIT_TIME_TYPE)*M_MAX_THREADS);
 	  memset(new_mutex->trylock_flag, 0, sizeof(int)*M_MAX_THREADS);
 		memset(new_mutex->trylock_fail_count, 0, sizeof(int)*M_MAX_THREADS);
 		append(new_mutex);
+#endif
     return new_mutex;
 }
 
@@ -73,7 +75,7 @@ int setSyncEntry( void* syncvar, void* realvar) {
 
 void futex_start_timestamp( my_mutex_t *mutex ) 
 {
-	int idx= getThreadIndex(); //TODO: fix this, add thread index
+	int idx = getThreadIndex(); //TODO: fix this, add thread index
 	struct timeinfo *st = &mutex->futex_start[idx];
 	//start(&(mutex->futex_start[idx]));
 	start(st);
@@ -81,7 +83,7 @@ void futex_start_timestamp( my_mutex_t *mutex )
 
 void add_futex_wait( my_mutex_t *mutex )
 {
-	int idx = getThreadIndex();//0; // TODO: fix this, add thread index
+	int idx = getThreadIndex();//TODO: get it once per wait time
 	struct timeinfo end;
 	struct timeinfo *st = &mutex->futex_start[idx];
 	//mutex->futex_wait[idx] = stop(&(mutex->futex_start[idx]), &end);
@@ -92,7 +94,7 @@ void add_futex_wait( my_mutex_t *mutex )
 
 void trylock_first_timestamp( my_mutex_t *mutex ) 
 {
-	int idx= getThreadIndex(); //TODO: fix this, add thread index
+	int idx= getThreadIndex(); //TODO: get it once per wait time
 	struct timeinfo *st = &mutex->trylock_first[idx];
 	if(!mutex->trylock_flag[idx]){
 		start(st);
@@ -128,11 +130,14 @@ void report() {
 	WAIT_TIME_TYPE contention = 0; 
 	int fail_count = 0;
 	WAIT_TIME_TYPE trylock_delay = 0;
+#if 1
 	std::fstream fs;
 	fs.open("report.log", std::fstream::out);
-  fs << "# of mutex " << mutex_list.size() << std::endl;
+#endif 
+  fs << "No of mutex " << mutex_list.size() << std::endl;
   for(it = mutex_list.begin(); it != mutex_list.end(); ++it ){
   	my_mutex_t *m = *it;
+#if 1
 		fs << &m->mutex << std::endl; //mutex address??
 
 		WAIT_TIME_TYPE m_contention = 0; 
@@ -140,27 +145,36 @@ void report() {
 		WAIT_TIME_TYPE m_trylock_delay = 0;
 		fs << "count " << m->count << std::endl;
 		fs << "\t\t THREAD FUTEX_WAIT TRY_FAIL TRY_WAIT" << std::endl;
+#endif
 		for(int i=0; i< M_MAX_THREADS; i++){
+#if 0
+			contention += m->futex_wait[i]; 
+			fail_count += m->trylock_fail_count[i];
+			trylock_delay += m->trylock_wait_time[i];
+#else
 			fs<< "\t\tT" << i << " : " << m->futex_wait[i]  << " " <<  m->trylock_fail_count[i] 
 							<< " " << m->trylock_wait_time[i] << std::endl;
     	m_contention += m->futex_wait[i]; 
 			m_fail_count += m->trylock_fail_count[i];
 			m_trylock_delay += m->trylock_wait_time[i];
+#endif
 		}
-		
+#if 1		
 		fs << "\n\t\tMutex Total " << m_contention << " " << m_fail_count << " " << m_trylock_delay
 					 << std::endl;
-
 		contention += m_contention;
 		fail_count += m_fail_count;
 		trylock_delay += m_trylock_delay;
+#endif
+		
 		//contention +=  elapsed2ms(m->futex_wait[0]);
 		//std::cout << "Contention " << elapsed2ms(m->futex_wait[0]) << "ms" << std::endl;
 		//printf("%lu\n", mutex->futex_start[0]);
+		fs << "\t\t" << m->count << std::endl;
   } 
   fs << "Total futex wait " << contention << " ms" << std::endl;
 	fs << "Total trylock fail " << fail_count << std::endl;
-	fs << "Total trylock fail time \n\n" << trylock_delay << std::endl;
+	fs << "Total trylock fail time " << trylock_delay << std::endl;
 
   fs.close();
 }
