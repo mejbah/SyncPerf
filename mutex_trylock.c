@@ -31,18 +31,29 @@ pthread_mutex_trylock (pthread_mutex_t *mutex) {
   tmp->count = tmp->count + 1;
   //printf("---lock count: %u---\n", tmp->count);
   mutex = &tmp->mutex;
-
-	trylock_first_timestamp(tmp); // get timestamp for first try only by a thread
+	mutex_meta_t *curr_meta = NULL;
+	
+	long stack[MAX_CALL_STACK_DEPTH + 1];
+	back_trace(stack, MAX_CALL_STACK_DEPTH);
+#if MY_DEBUG
+	int top = -1;
+	printf("call stack \n");
+	while(stack[top++] != 0 && top < MAX_CALL_STACK_DEPTH)
+		printf("%#lx\n", stack[top]);	
+	printf("end of stack \n");
+#endif
+	curr_meta = get_mutex_meta(tmp, stack);
+	trylock_first_timestamp(curr_meta); // get timestamp for first try only by a thread
 #endif
 
   int result =  do_mutex_trylock(mutex);
 #ifndef ORIGINAL
 	if(result == EBUSY ) { //failed as  mutex is already locked
 		//printf("\n....trylock failed....\n\n");
-		inc_trylock_fail_count(tmp);
+		inc_trylock_fail_count(curr_meta);
 	}
   else {
-		add_trylock_fail_time(tmp);
+		add_trylock_fail_time(curr_meta);
 	}
 #endif
 	return result;

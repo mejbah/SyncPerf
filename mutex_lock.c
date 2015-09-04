@@ -46,6 +46,7 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
 {
     //printf("In my pthread mutex lock\n");
 
+
 #ifndef NO_INCR // when called for cond_lock
 
 #ifndef ORIGINAL
@@ -59,7 +60,11 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
     tmp->count = tmp->count + 1; // no of times mutex accessed
     //printf("---lock count: %u---\n", tmp->count);
     mutex = &tmp->mutex;
-	
+		mutex_meta_t *curr_meta = NULL;
+
+		//long stack[MAX_CALL_STACK_DEPTH + 1];
+	  //back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
+
 #endif
 
 #endif	
@@ -111,29 +116,36 @@ simple:
 		//printf("PTHREAD_MUTEX_TIMED_NP\n");
 		/* Normal mutex.  */
 		// LLL_MUTEX_LOCK (mutex->__data.__lock);
+		
 #ifndef NO_INCR
-#ifndef ORIGINAL
-#if 1
+#ifndef ORIGINAL		
+		
 		if(mutex->__data.__lock == 2) { 
 			futex_flag=1; 
-			//printf("contention\n");
-			futex_start_timestamp(tmp);
 			
-		}
+			long stack[MAX_CALL_STACK_DEPTH + 1];
+			back_trace(stack, MAX_CALL_STACK_DEPTH);
+#if MY_DEBUG
+			int top = -1;
+			printf("call stack \n");
+			while(stack[top++] != 0 && top < MAX_CALL_STACK_DEPTH)
+				printf("%#lx\n", stack[top]);	
+			printf("end of stack \n");
 #endif
+			curr_meta = get_mutex_meta(tmp, stack);
+			futex_start_timestamp(curr_meta);			
+		}
 #endif
 #endif
 		LLL_MUTEX_LOCK (mutex);
 		assert (mutex->__data.__owner == 0);
 #ifndef NO_INCR
 #ifndef ORIGINAL
-#if 1
 		if(futex_flag) {
 			 
-			add_futex_wait(tmp);
+			add_futex_wait(curr_meta);
 			futex_flag=0;
 		}
-#endif
 #endif
 #endif
 		break;

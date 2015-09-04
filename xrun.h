@@ -81,9 +81,11 @@ public:
     // If the tid was set, it means that this instance was
     // initialized: end the transaction (at the end of main()).
 //   	_memory.finalize();
-		//report();
-  }
+#ifdef REPORT
+		report();
+#endif
 
+  }
 #if 0
   /// @brief Install a handler for KILL signals.
   void installSignalHandler() {

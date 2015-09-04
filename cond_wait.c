@@ -102,6 +102,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
      my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
 		 tmp->count = tmp->count + 1; // no of times mutex accessed
      mutex = &tmp->mutex;
+		 mutex_meta_t *curr_meta = NULL;
 #endif
 
 	//LIBC_PROBE (cond_wait, 2, cond, mutex);
@@ -145,7 +146,17 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	cbuffer.bc_seq = cond->__data.__broadcast_seq;
 #ifndef ORIGINAL
   //mejbah added for wait time
-	futex_start_timestamp(tmp);
+	long stack[MAX_CALL_STACK_DEPTH + 1];
+	back_trace(stack, MAX_CALL_STACK_DEPTH);
+#if MY_DEBUG
+	int top = -1;
+	printf("call stack \n");
+	while(stacks[top++] != 0 && top < MAX_CALL_STACK_DEPTH)
+		printf("%#lx\n", stacks[top]);	
+	printf("end of stack \n");
+#endif
+	curr_meta = get_mutex_meta(tmp, stack);	
+	futex_start_timestamp(curr_meta);
 	//mejbah added end
 #endif
 	do
@@ -225,7 +236,7 @@ bc_out:
 
 #ifndef ORIGINAL
 	//mejbah added for wait time
-	add_futex_wait(tmp);
+	add_cond_wait(curr_meta);
 	//mejbah added end
 #endif
 
