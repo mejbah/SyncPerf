@@ -99,10 +99,19 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	int pi_flag = 0;
 #endif
 #ifndef ORIGINAL
+		 pthread_mutex_t *orig_mutex;
+		 orig_mutex = mutex; //store for passing in the cond_lock func
+		 int idx = getThreadIndex();
      my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
 		 tmp->count = tmp->count + 1; // no of times mutex accessed
      mutex = &tmp->mutex;
 		 mutex_meta_t *curr_meta = NULL;
+		
+		long stack[MAX_CALL_STACK_DEPTH + 1];
+		back_trace(stack, MAX_CALL_STACK_DEPTH);
+		curr_meta = get_mutex_meta(tmp, stack);	
+		add_access_count(curr_meta, idx);
+
 #endif
 
 	//LIBC_PROBE (cond_wait, 2, cond, mutex);
@@ -146,8 +155,8 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	cbuffer.bc_seq = cond->__data.__broadcast_seq;
 #ifndef ORIGINAL
   //mejbah added for wait time
-	long stack[MAX_CALL_STACK_DEPTH + 1];
-	back_trace(stack, MAX_CALL_STACK_DEPTH);
+	//long stack[MAX_CALL_STACK_DEPTH + 1];
+	//back_trace(stack, MAX_CALL_STACK_DEPTH);
 #if MY_DEBUG
 	int top = -1;
 	printf("call stack \n");
@@ -155,8 +164,9 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 		printf("%#lx\n", stacks[top]);	
 	printf("end of stack \n");
 #endif
-	curr_meta = get_mutex_meta(tmp, stack);	
-	futex_start_timestamp(curr_meta);
+	//curr_meta = get_mutex_meta(tmp, stack);	
+	//futex_start_timestamp(curr_meta, idx); // not the right place 
+	int wait_start_flag = 0;
 	//mejbah added end
 #endif
 	do
@@ -208,6 +218,12 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 		/* If a broadcast happened, we are done.  */
 		if (cbuffer.bc_seq != cond->__data.__broadcast_seq)
 			goto bc_out;
+		else { //mejbah added for start timestamp of condwait
+			if(wait_start_flag == 0) {
+				futex_start_timestamp(curr_meta, idx);
+				wait_start_flag = 1;
+			}
+		}
 
 		/* Check whether we are eligible for wakeup.  */
 		val = cond->__data.__wakeup_seq;
@@ -236,7 +252,7 @@ bc_out:
 
 #ifndef ORIGINAL
 	//mejbah added for wait time
-	add_cond_wait(curr_meta);
+	//add_cond_wait(curr_meta, idx); //in mutex_lock.c
 	//mejbah added end
 #endif
 
@@ -250,7 +266,8 @@ bc_out:
 	    }
 	  else
 	#endif
-	    return __pthread_mutex_cond_lock (mutex);
-	//return pthread_mutex_lock(mutex);//mejbah added
+//	    return __pthread_mutex_cond_lock (mutex);
+			return __pthread_mutex_cond_lock (orig_mutex);
+	
 }
 

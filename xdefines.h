@@ -47,9 +47,10 @@
  * @author Emery Berger <http://www.cs.umass.edu/~emery>
  * @author Tongping Liu <http://www.cs.umass.edu/~tonyliu>
  */ 
-
+#ifdef __cplusplus
 extern "C"
 {
+#endif
   typedef void * threadFunction (void *);
 	#define gettid() syscall(SYS_gettid)
   
@@ -188,8 +189,13 @@ extern "C"
   inline unsigned long getMax(unsigned long a, unsigned long b) {
     return (a > b ? a : b);
   }
-};
 
+#ifdef __cplusplus
+};
+#endif
+
+
+#ifdef __cplusplus
 class xdefines {
 public:
   enum { STACK_SIZE = 1024 * 1024 };
@@ -200,7 +206,7 @@ public:
   enum { PageSize = 4096UL };
   enum { PAGE_SIZE_MASK = (PAGE_SIZE-1) };
 
-  enum { MAX_THREADS = 4096 };
+  enum { MAX_THREADS = 2048 };//4096 };
 	
 	// We only support 64 heaps in total.
   enum { NUM_HEAPS = 128 };
@@ -241,5 +247,5 @@ public:
 
   enum { THRESHOLD_REPORT_INVALIDATIONS = 1 };
 };
-
+#endif
 #endif

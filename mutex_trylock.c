@@ -22,6 +22,7 @@
 int
 pthread_mutex_trylock (pthread_mutex_t *mutex) {
 #ifndef ORIGINAL
+	int idx = getThreadIndex();
   if( !is_my_mutex(mutex) )
   {
 		my_mutex_t *new_mutex = create_mutex(mutex);
@@ -43,17 +44,17 @@ pthread_mutex_trylock (pthread_mutex_t *mutex) {
 	printf("end of stack \n");
 #endif
 	curr_meta = get_mutex_meta(tmp, stack);
-	trylock_first_timestamp(curr_meta); // get timestamp for first try only by a thread
+	trylock_first_timestamp(curr_meta,idx); // get timestamp for first try only by a thread
 #endif
 
   int result =  do_mutex_trylock(mutex);
 #ifndef ORIGINAL
 	if(result == EBUSY ) { //failed as  mutex is already locked
 		//printf("\n....trylock failed....\n\n");
-		inc_trylock_fail_count(curr_meta);
+		inc_trylock_fail_count(curr_meta, idx);
 	}
   else {
-		add_trylock_fail_time(curr_meta);
+		add_trylock_fail_time(curr_meta,idx);
 	}
 #endif
 	return result;

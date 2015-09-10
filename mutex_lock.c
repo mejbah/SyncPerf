@@ -17,6 +17,11 @@
 
 #include<mutex_manager.h>
 
+
+#ifndef NO_INCR
+#include "xdefines.h"
+#endif
+
 #ifndef LLL_MUTEX_LOCK
 # define LLL_MUTEX_LOCK(mutex) \
       lll_lock ((mutex)->__data.__lock, PTHREAD_MUTEX_PSHARED (mutex))
@@ -46,26 +51,29 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
 {
     //printf("In my pthread mutex lock\n");
 
+	mutex_meta_t *curr_meta = NULL;
 
-#ifndef NO_INCR // when called for cond_lock
 
 #ifndef ORIGINAL
+		int idx = getThreadIndex();
+
+#ifndef NO_INCR // when called for cond_lock
     if( !is_my_mutex(mutex) ) 
     {
         my_mutex_t *new_mutex = create_mutex(mutex);
         setSyncEntry(mutex, new_mutex);
     }
-
+#endif
     my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
     tmp->count = tmp->count + 1; // no of times mutex accessed
     //printf("---lock count: %u---\n", tmp->count);
     mutex = &tmp->mutex;
-		mutex_meta_t *curr_meta = NULL;
+		//mutex_meta_t *curr_meta = NULL;
 
-		//long stack[MAX_CALL_STACK_DEPTH + 1];
-	  //back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
-
-#endif
+		long stack[MAX_CALL_STACK_DEPTH + 1];
+	  back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
+		curr_meta = get_mutex_meta(tmp, stack); // TODO: do only for futex wait
+		add_access_count(curr_meta, idx);
 
 #endif	
     assert (sizeof (mutex->__size) >= sizeof (mutex->__data));
@@ -123,8 +131,8 @@ simple:
 		if(mutex->__data.__lock == 2) { 
 			futex_flag=1; 
 			
-			long stack[MAX_CALL_STACK_DEPTH + 1];
-			back_trace(stack, MAX_CALL_STACK_DEPTH);
+			//long stack[MAX_CALL_STACK_DEPTH + 1];
+			//back_trace(stack, MAX_CALL_STACK_DEPTH);
 #if MY_DEBUG
 			int top = -1;
 			printf("call stack \n");
@@ -132,8 +140,8 @@ simple:
 				printf("%#lx\n", stack[top]);	
 			printf("end of stack \n");
 #endif
-			curr_meta = get_mutex_meta(tmp, stack);
-			futex_start_timestamp(curr_meta);			
+			//curr_meta = get_mutex_meta(tmp, stack);
+			futex_start_timestamp(curr_meta, idx);			
 		}
 #endif
 #endif
@@ -143,10 +151,19 @@ simple:
 #ifndef ORIGINAL
 		if(futex_flag) {
 			 
-			add_futex_wait(curr_meta);
+			add_futex_wait(curr_meta, idx);
 			futex_flag=0;
 		}
 #endif
+//#endif
+#else //condition wait final lock grab
+		//int idx = getThreadIndex();
+		//my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
+    //tmp->count = tmp->count + 1; 
+		//long stack[MAX_CALL_STACK_DEPTH + 1];
+	  //back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
+		//curr_meta = get_mutex_meta(tmp, stack); 
+    add_cond_wait(curr_meta, idx); 
 #endif
 		break;
 

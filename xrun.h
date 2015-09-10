@@ -82,7 +82,7 @@ public:
     // initialized: end the transaction (at the end of main()).
 //   	_memory.finalize();
 #ifdef REPORT
-		report();
+		report_conflict();
 #endif
 
   }

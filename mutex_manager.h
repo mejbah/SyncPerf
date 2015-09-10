@@ -11,21 +11,26 @@ extern "C" {
 #include "finetime.h"
 //#include "xdefines.h"
 
-#define M_MAX_THREADS 50 // TODO: fix this equal to xdefines::MAX_THREADS
+#define M_MAX_THREADS 1024 // TODO: fix this equal to xdefines::MAX_THREADS
 #define MAX_CALL_STACK_DEPTH 10
-#define MAX_NUM_STACKS 20 
+#define MAX_NUM_STACKS 10
 
-typedef unsigned long WAIT_TIME_TYPE;
+//typedef unsigned long WAIT_TIME_TYPE;
+typedef double  WAIT_TIME_TYPE;
 typedef unsigned int UINT32;
 
 typedef struct {
-  struct timeinfo futex_start[M_MAX_THREADS]; //futex start time
-	WAIT_TIME_TYPE futex_wait[M_MAX_THREADS]; // time spend in futex wait
-	WAIT_TIME_TYPE cond_futex_wait[M_MAX_THREADS]; // time spend in cond wait
 	struct timeinfo trylock_first[M_MAX_THREADS]; // has to be zero initialized
 	WAIT_TIME_TYPE trylock_wait_time[M_MAX_THREADS];
 	int trylock_flag[M_MAX_THREADS];
 	int trylock_fail_count[M_MAX_THREADS]; 
+	UINT32 access_count[M_MAX_THREADS]; // for conflict rate
+	UINT32 fail_count[M_MAX_THREADS]; // for conflict rate
+
+  struct timeinfo futex_start[M_MAX_THREADS]; //futex start time
+	WAIT_TIME_TYPE futex_wait[M_MAX_THREADS]; // time spend in futex wait
+	WAIT_TIME_TYPE cond_futex_wait[M_MAX_THREADS]; // time spend in cond wait
+		
 }mutex_meta_t;
 
 typedef struct {
@@ -57,17 +62,19 @@ mutex_meta_t* get_mutex_meta( my_mutex_t *mutex, long call_stack[] );
 
 
 #if 1
-void futex_start_timestamp( mutex_meta_t *mutex );
+void add_access_count( mutex_meta_t *mutex, int idx);
 
-void add_futex_wait( mutex_meta_t *mutex );
+void futex_start_timestamp( mutex_meta_t *mutex, int idx );
 
-void add_cond_wait( mutex_meta_t *mutex );
+void add_futex_wait( mutex_meta_t *mutex, int idx );
 
-void add_trylock_fail_time( mutex_meta_t *mutex );
+void add_cond_wait( mutex_meta_t *mutex, int idx );
 
-void trylock_first_timestamp( mutex_meta_t *mutex );
+void add_trylock_fail_time( mutex_meta_t *mutex, int idx );
 
-void inc_trylock_fail_count( mutex_meta_t *mutex );
+void trylock_first_timestamp( mutex_meta_t *mutex, int idx );
+
+void inc_trylock_fail_count( mutex_meta_t *mutex, int idx );
 #else
 
 void futex_start_timestamp( my_mutex_t *mutex );
@@ -89,6 +96,8 @@ void append( my_mutex_t *mut );
 int setSyncEntry( void* syncvar, void* realvar);
 
 void report();
+
+void report_conflict();
 
 /* Define the stack_frame layout */
 struct stack_frame {
