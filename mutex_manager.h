@@ -13,7 +13,7 @@ extern "C" {
 
 #define M_MAX_THREADS 1024 // TODO: fix this equal to xdefines::MAX_THREADS
 #define MAX_CALL_STACK_DEPTH 10
-#define MAX_NUM_STACKS 10
+#define MAX_NUM_STACKS 512
 
 //typedef unsigned long WAIT_TIME_TYPE;
 typedef double  WAIT_TIME_TYPE;

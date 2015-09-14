@@ -72,8 +72,17 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
 
 		long stack[MAX_CALL_STACK_DEPTH + 1];
 	  back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
+#ifndef NO_INCR // if not in cond_wait
 		curr_meta = get_mutex_meta(tmp, stack); // TODO: do only for futex wait
 		add_access_count(curr_meta, idx);
+#else	//in cond wait , access count already added in cond_wait.c , call_stack starts one step deeper to match wiht cond_wait call
+		int i;
+		for(i = 0; i< MAX_CALL_STACK_DEPTH; i++){
+			stack[i] = stack[i+1];
+		}
+		stack[MAX_CALL_STACK_DEPTH] = 0; //it was already zero??
+		curr_meta = get_mutex_meta(tmp, stack);	
+#endif
 
 #endif	
     assert (sizeof (mutex->__size) >= sizeof (mutex->__data));
@@ -163,14 +172,17 @@ simple:
 		//long stack[MAX_CALL_STACK_DEPTH + 1];
 	  //back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
 		//curr_meta = get_mutex_meta(tmp, stack); 
+#ifndef ORIGINAL
     add_cond_wait(curr_meta, idx); 
+#endif
+
 #endif
 		break;
 
 	case PTHREAD_MUTEX_ADAPTIVE_NP:
 		//if (! __is_smp)
 		//goto simple;
-		printf("PTHREAD_MUTEX_ADAPTIVE_NP\n");
+		//printf("PTHREAD_MUTEX_ADAPTIVE_NP\n");
 		if (LLL_MUTEX_TRYLOCK (mutex) != 0)
 		{
 			int cnt = 0;

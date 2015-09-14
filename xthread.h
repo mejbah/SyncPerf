@@ -262,6 +262,7 @@ public:
 
     // Allocate a global thread index for current thread.
     tindex = allocThreadIndex();
+		//printf("pthread create  index : %d\n", tindex);
     thread_t * children = getThreadInfoByIndex(tindex);
     
     children->startRoutine = fn;
@@ -338,7 +339,7 @@ public:
 
 		// Get the stop time.
 		current->actualRuntime = elapsed2ms(stop(&current->startTime, NULL));
-//		fprintf(stderr, "tid %d index %d latency %lx actualRuntime %ld\n", current->tid, current->index, current->latency, current->actualRuntime);
+		fprintf(stderr, "tid %d index %d latency %lx actualRuntime %ld\n", current->tid, current->index, current->latency, current->actualRuntime);
 
     return result;
   }

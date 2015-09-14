@@ -13,11 +13,11 @@
 
 //typedef std::map< std::vector<long>, std::vector<my_mutex_t*> > hash_map_t;
 //hash_map_t mutex_map; // hash map for call stack - mutex
+#ifndef ORIGINAL
 pthread_mutex_t mutex_map_lock=PTHREAD_MUTEX_INITIALIZER;
 
-std::list<my_mutex_t*>mutex_list;
-pthread_mutex_t mutex_list_lock=PTHREAD_MUTEX_INITIALIZER; // global lock 
-
+std::vector<my_mutex_t*>g_mutex_list;
+pthread_mutex_t g_mutex_list_lock=PTHREAD_MUTEX_INITIALIZER; // global lock 
 my_mutex_t* create_mutex( pthread_mutex_t *mutex )
 {
     //printf("create my mutex\n");
@@ -25,7 +25,7 @@ my_mutex_t* create_mutex( pthread_mutex_t *mutex )
     new_mutex->count = 0;
     new_mutex->mutex = *mutex;
 		new_mutex->stack_count = 0;
-		memset(new_mutex->data, 0, sizeof(mutex_meta_t)*MAX_NUM_STACKS);
+//		memset(new_mutex->data, 0, sizeof(mutex_meta_t)*MAX_NUM_STACKS);
 #if 0 // TODO: do i really need to initialize array  with 0??
 		memset(new_mutex->futex_wait, 0, sizeof(WAIT_TIME_TYPE)*M_MAX_THREADS);
 		memset(new_mutex->cond_futex_wait, 0, sizeof(WAIT_TIME_TYPE)*M_MAX_THREADS);
@@ -93,6 +93,7 @@ int setSyncEntry( void* syncvar, void* realvar) {
 void add_call_stack( my_mutex_t *mutex, long call_stack[] ){
 	int i=0;
 	mutex->stack_count++;
+	assert(mutex->stack_count < MAX_NUM_STACKS);
 	while(call_stack[i] != 0 ) {
 		mutex->stacks[mutex->stack_count-1][i] = call_stack[i];
 		i++;
@@ -252,6 +253,7 @@ void add_cond_wait( mutex_meta_t *mutex, int idx )
 	//mutex->cond_futex_wait[idx] += elapsed2ms(elapse);
 }
 
+#ifdef WITH_TRYLOCK
 void trylock_first_timestamp( mutex_meta_t *mutex, int idx ) 
 {
 	struct timeinfo *st = &mutex->trylock_first[idx];
@@ -260,7 +262,6 @@ void trylock_first_timestamp( mutex_meta_t *mutex, int idx )
 		mutex->trylock_flag[idx] = 1;
 	}
 }
-
 
 
 void add_trylock_fail_time( mutex_meta_t *mutex, int idx )
@@ -281,15 +282,19 @@ void add_trylock_fail_time( mutex_meta_t *mutex, int idx )
 void inc_trylock_fail_count( mutex_meta_t *mutex, int idx ) {
 	//int idx = getThreadIndex();	
 	assert(mutex->trylock_flag[idx] == 1);
+	mutex->fail_count[idx]++;
 	mutex->trylock_fail_count[idx]++;
 }
+
+#endif // WITH_TRYLOCK
+
 
 #endif
 
 void append( my_mutex_t *mut ) {
-  WRAP(pthread_mutex_lock)(&mutex_list_lock);  
-  mutex_list.push_back(mut);
-	WRAP(pthread_mutex_unlock)(&mutex_list_lock);
+  WRAP(pthread_mutex_lock)(&g_mutex_list_lock);  
+  g_mutex_list.push_back(mut);
+	WRAP(pthread_mutex_unlock)(&g_mutex_list_lock);
 }
 
 int back_trace(long stacks[ ], int size)
@@ -336,7 +341,7 @@ int back_trace(long stacks[ ], int size)
 
 #ifdef REPORT
 void report() {
-	std::list<my_mutex_t*>::iterator it;
+	std::vector<my_mutex_t*>::iterator it;
 
 	std::cout << "Report...\n";
 
@@ -345,7 +350,7 @@ void report() {
   //mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
 	fs << "mutex_id, call stacks, tindex, futex_wait, cond_wait, trylock_wait, trylock_fail_count"<< std::endl;
 	int id = 0; // mutex_id just for reporting
-	for(it = mutex_list.begin(); it != mutex_list.end(); ++it ){
+	for(it = g_mutex_list.begin(); it != g_mutex_list.end(); ++it ){
   	my_mutex_t *m = *it;
 		id++;
 		//std::cout << m->stack_count << std::endl;
@@ -368,9 +373,13 @@ void report() {
 			int tid;
 			for( tid=0; tid<M_MAX_THREADS; tid++ ){
 				fs <<std::dec<< id << "," << stack_str << "," << tid << "," <<  m->data[i].futex_wait[tid] << ","
-									<< m->data[i].cond_futex_wait[tid] << ","
+									<< m->data[i].cond_futex_wait[tid] 
+#ifdef WITH_TRYLOCK
+									<< ","
 									<<  m->data[i].trylock_wait_time[tid] << ","
-									<< m->data[i].trylock_fail_count[tid] << std::endl;
+									<< m->data[i].trylock_fail_count[tid] 
+#endif
+									<< std::endl;
 			}
 
 
@@ -381,7 +390,7 @@ void report() {
 
 
 void report_conflict() {
-	std::list<my_mutex_t*>::iterator it;
+	std::vector<my_mutex_t*>::iterator it;
 
 	std::cout << "Report...\n";
 
@@ -390,7 +399,7 @@ void report_conflict() {
   //mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
 	fs << "mutex_id, call stacks, access_count, fail_count"<< std::endl;
 	int id = 0; // mutex_id just for reporting
-	for(it = mutex_list.begin(); it != mutex_list.end(); ++it ){
+	for(it = g_mutex_list.begin(); it != g_mutex_list.end(); ++it ){
   	my_mutex_t *m = *it;
 		id++;
 		//std::cout << m->stack_count << std::endl;
@@ -424,6 +433,8 @@ void report_conflict() {
   }
 	fs.close();
 }
+#endif
+
 
 #endif
 

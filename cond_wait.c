@@ -218,12 +218,15 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 		/* If a broadcast happened, we are done.  */
 		if (cbuffer.bc_seq != cond->__data.__broadcast_seq)
 			goto bc_out;
+#ifndef ORIGINAL
 		else { //mejbah added for start timestamp of condwait
 			if(wait_start_flag == 0) {
 				futex_start_timestamp(curr_meta, idx);
 				wait_start_flag = 1;
 			}
 		}
+#endif
+
 
 		/* Check whether we are eligible for wakeup.  */
 		val = cond->__data.__wakeup_seq;
@@ -266,8 +269,11 @@ bc_out:
 	    }
 	  else
 	#endif
-//	    return __pthread_mutex_cond_lock (mutex);
+#ifdef ORIGINAL
+	    return __pthread_mutex_cond_lock (mutex);
+#else
 			return __pthread_mutex_cond_lock (orig_mutex);
+#endif
 	
 }
 
