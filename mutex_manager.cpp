@@ -233,6 +233,13 @@ void futex_start_timestamp( mutex_meta_t *mutex, int idx )
 	start(st);
 }
 
+void cond_start_timestamp( mutex_meta_t *mutex, int idx ) 
+{
+	struct timeinfo *st = &mutex->futex_start[idx];
+	//start(&(mutex->futex_start[idx]));
+	start(st);
+}
+
 void add_futex_wait( mutex_meta_t *mutex, int idx )
 {
 	struct timeinfo end;
@@ -393,7 +400,6 @@ void report_conflict() {
 	std::vector<my_mutex_t*>::iterator it;
 
 	std::cout << "Report...\n";
-
 	std::fstream fs;
 	fs.open("mutex-conflicts.csv", std::fstream::out);
   //mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
@@ -432,6 +438,78 @@ void report_conflict() {
 		}
   }
 	fs.close();
+}
+
+class ConflictData{
+public:
+	UINT32 access_count;
+	UINT32 fail_count;
+
+	ConflictData( UINT32 access, UINT32 fail ){
+		access_count = access;
+		fail_count = fail;
+	}
+	~ConflictData(){}
+};
+
+void report_call_site_results() {
+	//map<vector<long>,int>call_site;
+	std::map<std::string,ConflictData*>call_site;
+	std::vector<my_mutex_t*>::iterator it;
+
+	for(it = g_mutex_list.begin(); it != g_mutex_list.end(); ++it ){
+		my_mutex_t *m = *it;
+		//std::cout << m->stack_count << std::endl;
+		int i;
+		for( i=0; i< m->stack_count; i++ ){
+			int j=0;
+
+			std::string stack_str="";
+			std::stringstream ss;
+			while(m->stacks[i][j] != 0 ) {
+				//printf("%#lx\n", m->stacks[i][j]);	
+				//std::cout << std::hex << m->stacks[i][j] << std::endl;
+				ss << std::hex << m->stacks[i][j];
+				stack_str += ss.str();
+				ss.str("");
+				stack_str += " ";
+				j++;
+			}	
+			int tid;
+			UINT32 total_access_count = 0;
+			UINT32 total_fail_count = 0;
+			for( tid=0; tid<M_MAX_THREADS; tid++ ){
+				total_access_count += m->data[i].access_count[tid];
+				total_fail_count += m->data[i].fail_count[tid];
+			}
+
+			//check the hashmap and update
+			std::map<std::string,ConflictData*>::iterator it;
+			it = call_site.find(stack_str);
+			if(it == call_site.end()){
+				call_site.insert(std::pair<std::string,ConflictData*>(stack_str,new ConflictData(total_access_count, total_fail_count)));
+			}
+			else {
+				it->second->access_count += total_access_count;
+				it->second->fail_count += total_fail_count;
+			}
+		}
+	}
+			
+	//print the map
+	std::cout << "Report...\n";
+	std::fstream fs;
+	fs.open("mutex_call_site.csv", std::fstream::out);
+  //mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
+	fs << "call stacks, access_count, fail_count"<< std::endl;
+
+//	std::map<std::string,ConflictData*>::iterator it;
+	
+	for( std::map<std::string,ConflictData*>::iterator it=call_site.begin(); it!=call_site.end(); ++it){
+		if( it->second->fail_count > 0 )
+		fs << it->first <<", "<< it->second->access_count <<", "<< it->second->fail_count << std::endl;
+	}
+	
 }
 #endif
 

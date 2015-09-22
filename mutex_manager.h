@@ -66,6 +66,8 @@ void add_access_count( mutex_meta_t *mutex, int idx);
 
 void futex_start_timestamp( mutex_meta_t *mutex, int idx );
 
+void cond_start_timestamp( mutex_meta_t *mutex, int idx );
+
 void add_futex_wait( mutex_meta_t *mutex, int idx );
 
 void add_cond_wait( mutex_meta_t *mutex, int idx );
@@ -98,6 +100,8 @@ int setSyncEntry( void* syncvar, void* realvar);
 void report();
 
 void report_conflict();
+
+void report_call_site_results();
 
 /* Define the stack_frame layout */
 struct stack_frame {

@@ -221,7 +221,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 #ifndef ORIGINAL
 		else { //mejbah added for start timestamp of condwait
 			if(wait_start_flag == 0) {
-				futex_start_timestamp(curr_meta, idx);
+				cond_start_timestamp(curr_meta, idx);
 				wait_start_flag = 1;
 			}
 		}
