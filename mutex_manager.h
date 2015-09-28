@@ -63,6 +63,7 @@ mutex_meta_t* get_mutex_meta( my_mutex_t *mutex, long call_stack[] );
 
 #if 1
 void add_access_count( mutex_meta_t *mutex, int idx);
+void inc_fail_count( mutex_meta_t *mutex, int idx ); // conflict rate
 
 void futex_start_timestamp( mutex_meta_t *mutex, int idx );
 
@@ -99,9 +100,9 @@ int setSyncEntry( void* syncvar, void* realvar);
 
 void report();
 
-void report_conflict();
+void report_mutex_conflicts();
 
-void report_call_site_results();
+void report_call_site_conflicts();
 
 /* Define the stack_frame layout */
 struct stack_frame {

@@ -173,7 +173,7 @@ simple:
 	  //back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
 		//curr_meta = get_mutex_meta(tmp, stack); 
 #ifndef ORIGINAL
-    add_cond_wait(curr_meta, idx); 
+//    add_cond_wait(curr_meta, idx); 
 #endif
 
 #endif
@@ -185,18 +185,22 @@ simple:
 		//printf("PTHREAD_MUTEX_ADAPTIVE_NP\n");
 		if (LLL_MUTEX_TRYLOCK (mutex) != 0)
 		{
+			futex_start_timestamp(curr_meta, idx);
 			int cnt = 0;
 			int max_cnt = MIN (MAX_ADAPTIVE_COUNT,
 				mutex->__data.__spins * 2 + 10);
 			do
 			{
+				inc_fail_count(curr_meta, idx);
 				if (cnt++ >= max_cnt)
 				{
-					// LLL_MUTEX_LOCK (mutex->__data.__lock);
+					// LLL_MUTEX_LOCK (mutex->__data.__lock);//mejbah edited
+					//TODO: not calculting the spin waiting time/TRYLOCK fail
 					LLL_MUTEX_LOCK (mutex);
+					add_futex_wait(curr_meta, idx);
 					break;
 				}
-
+				
 #ifdef BUSY_WAIT_NOP
 				BUSY_WAIT_NOP;
 #endif

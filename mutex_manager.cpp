@@ -225,8 +225,13 @@ void add_access_count(mutex_meta_t *mutex, int idx)
 {
 	mutex->access_count[idx]++;
 }
-void futex_start_timestamp( mutex_meta_t *mutex, int idx ) 
+void inc_fail_count( mutex_meta_t *mutex, int idx )
 {
+  mutex->fail_count[idx]++;
+}
+
+void futex_start_timestamp( mutex_meta_t *mutex, int idx ) 
+{	
 	mutex->fail_count[idx]++;
 	struct timeinfo *st = &mutex->futex_start[idx];
 	//start(&(mutex->futex_start[idx]));
@@ -296,7 +301,7 @@ void inc_trylock_fail_count( mutex_meta_t *mutex, int idx ) {
 #endif // WITH_TRYLOCK
 
 
-#endif
+#endif // #if 0
 
 void append( my_mutex_t *mut ) {
   WRAP(pthread_mutex_lock)(&g_mutex_list_lock);  
@@ -396,7 +401,7 @@ void report() {
 }
 
 
-void report_conflict() {
+void report_mutex_conflicts() {
 	std::vector<my_mutex_t*>::iterator it;
 
 	std::cout << "Report...\n";
@@ -444,15 +449,20 @@ class ConflictData{
 public:
 	UINT32 access_count;
 	UINT32 fail_count;
+	WAIT_TIME_TYPE cond_wait;
 
-	ConflictData( UINT32 access, UINT32 fail ){
+	ConflictData( UINT32 access, UINT32 fail, WAIT_TIME_TYPE _cond_wait ){
 		access_count = access;
 		fail_count = fail;
+		cond_wait = _cond_wait;
 	}
 	~ConflictData(){}
 };
 
-void report_call_site_results() {
+const int THRESHOLD_LOCK_COUNT = 1000; //access count threshold
+const int THRESHOLD_FAIL_COUNT = 200; // lock access fail threshold
+
+void report_call_site_conflicts() {
 	//map<vector<long>,int>call_site;
 	std::map<std::string,ConflictData*>call_site;
 	std::vector<my_mutex_t*>::iterator it;
@@ -478,20 +488,23 @@ void report_call_site_results() {
 			int tid;
 			UINT32 total_access_count = 0;
 			UINT32 total_fail_count = 0;
+			WAIT_TIME_TYPE total_cond_wait = 0;
 			for( tid=0; tid<M_MAX_THREADS; tid++ ){
 				total_access_count += m->data[i].access_count[tid];
 				total_fail_count += m->data[i].fail_count[tid];
+				total_cond_wait += m->data[i].cond_futex_wait[tid];
 			}
 
 			//check the hashmap and update
 			std::map<std::string,ConflictData*>::iterator it;
 			it = call_site.find(stack_str);
 			if(it == call_site.end()){
-				call_site.insert(std::pair<std::string,ConflictData*>(stack_str,new ConflictData(total_access_count, total_fail_count)));
+				call_site.insert(std::pair<std::string,ConflictData*>(stack_str,new ConflictData(total_access_count, total_fail_count, total_cond_wait)));
 			}
 			else {
 				it->second->access_count += total_access_count;
 				it->second->fail_count += total_fail_count;
+				it->second->cond_wait += total_cond_wait;
 			}
 		}
 	}
@@ -501,20 +514,22 @@ void report_call_site_results() {
 	std::fstream fs;
 	fs.open("mutex_call_site.csv", std::fstream::out);
   //mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
-	fs << "call stacks, access_count, fail_count"<< std::endl;
+	fs << "call stacks, lock_count, fail_count, cond_wait_time"<< std::endl;
 
 //	std::map<std::string,ConflictData*>::iterator it;
 	
 	for( std::map<std::string,ConflictData*>::iterator it=call_site.begin(); it!=call_site.end(); ++it){
-		if( it->second->fail_count > 0 )
-		fs << it->first <<", "<< it->second->access_count <<", "<< it->second->fail_count << std::endl;
+		//if( it->second->fail_count > THRESHOLD_FAIL_COUNT && it->second->access_count > THRESHOLD_LOCK_COUNT  )
+		if(it->second->fail_count > 0 || it->second->cond_wait > 0)
+		fs << it->first <<", "<< it->second->access_count <<", "<< it->second->fail_count<< ", "<< elapsed2ms(it->second->cond_wait) << std::endl;
 	}
 	
 }
-#endif
+
+#endif //REPORT
 
 
-#endif
+#endif //ORIGINAL
 
 
 

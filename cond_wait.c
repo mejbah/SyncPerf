@@ -255,7 +255,8 @@ bc_out:
 
 #ifndef ORIGINAL
 	//mejbah added for wait time
-	//add_cond_wait(curr_meta, idx); //in mutex_lock.c
+	if(wait_start_flag)
+	add_cond_wait(curr_meta, idx); //in mutex_lock.c
 	//mejbah added end
 #endif
 

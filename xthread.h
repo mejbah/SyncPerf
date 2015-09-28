@@ -37,6 +37,8 @@ Second, try to maintain a thread local variable to save some thread local inform
 #include <stdio.h>
 #include <string.h> //mejbah
 #include <assert.h> //mejbah
+#include <fstream>
+#include <iostream>
 #include "xdefines.h"
 #include "finetime.h"
 #ifdef USING_IBS
@@ -100,8 +102,19 @@ public:
 
 	// The end of system. 
 	void finalize(void) {
-		// Stop the last level
+		// Stop the last 
 		stopThreadLevelInfo();
+
+		std::fstream fs;
+		fs.open("threads.csv", std::fstream::out);
+		for( int i=0; i<xdefines::MAX_THREADS; i++) {
+			if(_threads[i].index !=0 ){
+				fs << _threads[i].index << "," << std::hex <<(void*)( _threads[i].startRoutine)<< std::dec<< "," <<  _threads[i].actualRuntime << std::endl;
+			}
+			//printf("id %d runtime %lu\n",_threads[i].index, _threads[i].actualRuntime);
+		}
+		fs.close();
+		
 	}
 
   // Initialize the first threadd
@@ -149,7 +162,7 @@ public:
 		info->beginIndex = threadIndex;
 		info->endIndex = threadIndex;
 		
-//		fprintf(stderr, "starting a new thread level\n");
+		//fprintf(stderr, "starting a new thread level\n");
 	}
 	
 	// Start a thread level
@@ -158,7 +171,7 @@ public:
 
 		info->elapse = elapsed2ms(stop(&info->startTime, NULL));
 
-//		fprintf(stderr, "PHASE end %ld\n", info->elapse);
+		fprintf(stderr, "PHASE end %ld\n", info->elapse);
 	}
 
 	unsigned long getTotalThreadLevels(void) {
@@ -339,7 +352,7 @@ public:
 
 		// Get the stop time.
 		current->actualRuntime = elapsed2ms(stop(&current->startTime, NULL));
-		fprintf(stderr, "tid %d index %d latency %lx actualRuntime %ld\n", current->tid, current->index, current->latency, current->actualRuntime);
+		//fprintf(stderr, "tid %d index %d latency %lx actualRuntime %ld\n", current->tid, current->index, current->latency, current->actualRuntime);
 
     return result;
   }
