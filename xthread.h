@@ -108,9 +108,18 @@ public:
 		std::fstream fs;
 		fs.open("threads.csv", std::fstream::out);
 		for( int i=0; i<xdefines::MAX_THREADS; i++) {
-			if(_threads[i].index !=0 ){
-				fs << _threads[i].index << "," << std::hex <<(void*)( _threads[i].startRoutine)<< std::dec<< "," <<  _threads[i].actualRuntime << std::endl;
-			}
+			//if(i>0 && _threads[i].index == 0) break; //empty array fields	
+			fs << _threads[i].index << "," << std::hex <<(void*)( _threads[i].startRoutine)<< std::dec<< "," <<  _threads[i].actualRuntime << std::endl;
+		
+			//printf("id %d runtime %lu\n",_threads[i].index, _threads[i].actualRuntime);
+		}
+		fs.close();
+
+		fs.open("thread_levels.csv", std::fstream::out);
+		fs << "Phase No., Thread Index begin,Thread Index end" << std::endl;
+		for( int i=0; i<= getTotalThreadLevels(); i++) {
+			threadLevelInfo *info = getThreadLevelByIndex(i);
+			fs << i << "," << info->beginIndex << "," <<  info->endIndex  << std::endl;
 			//printf("id %d runtime %lu\n",_threads[i].index, _threads[i].actualRuntime);
 		}
 		fs.close();

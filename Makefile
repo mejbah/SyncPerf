@@ -26,7 +26,7 @@ $(TARGET) : $(OBJS) $(OBJECTS_AS) $(CPP_OBJS)
 %.o : %.S
 	$(CC) $(CFLAGS) -c $<
 CSCOPE:
-	`find -name '*.c' -o -name '*.h' > cscope.files`
+	`find -name '*.c' -o -name '*.cpp' -o -name '*.h' > cscope.files`
 	`cscope -b` 
 	# -q -k`
 

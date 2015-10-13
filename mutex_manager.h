@@ -11,7 +11,7 @@ extern "C" {
 #include "finetime.h"
 //#include "xdefines.h"
 
-#define M_MAX_THREADS 1024 // TODO: fix this equal to xdefines::MAX_THREADS
+#define M_MAX_THREADS 2048 // TODO: fix this equal to xdefines::MAX_THREADS
 #define MAX_CALL_STACK_DEPTH 10
 #define MAX_NUM_STACKS 512
 
@@ -26,6 +26,7 @@ typedef struct {
 	int trylock_fail_count[M_MAX_THREADS]; 
 	UINT32 access_count[M_MAX_THREADS]; // for conflict rate
 	UINT32 fail_count[M_MAX_THREADS]; // for conflict rate
+	UINT32 cond_waits[M_MAX_THREADS]; // number of cond_wait 
 
   struct timeinfo futex_start[M_MAX_THREADS]; //futex start time
 	WAIT_TIME_TYPE futex_wait[M_MAX_THREADS]; // time spend in futex wait
@@ -64,6 +65,8 @@ mutex_meta_t* get_mutex_meta( my_mutex_t *mutex, long call_stack[] );
 #if 1
 void add_access_count( mutex_meta_t *mutex, int idx);
 void inc_fail_count( mutex_meta_t *mutex, int idx ); // conflict rate
+void add_cond_wait_count( mutex_meta_t *mutex, int idx);
+
 
 void futex_start_timestamp( mutex_meta_t *mutex, int idx );
 
@@ -103,6 +106,8 @@ void report();
 void report_mutex_conflicts();
 
 void report_call_site_conflicts();
+
+void report_thread_waits();
 
 /* Define the stack_frame layout */
 struct stack_frame {

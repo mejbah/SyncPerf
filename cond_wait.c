@@ -110,7 +110,8 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 		long stack[MAX_CALL_STACK_DEPTH + 1];
 		back_trace(stack, MAX_CALL_STACK_DEPTH);
 		curr_meta = get_mutex_meta(tmp, stack);	
-		add_access_count(curr_meta, idx);
+		//add_access_count(curr_meta, idx);
+		add_cond_wait_count(curr_meta,idx);
 
 #endif
 

@@ -63,7 +63,7 @@ public:
   /// @brief Initialize the system.
   void initialize()
   {
-		//installSignalHandler();
+		installSignalHandler();
 //    InternalHeap::getInstance().initialize();
 
 		fprintf(stderr, "xrun initialize before xthread initialize\n");
@@ -84,10 +84,11 @@ public:
 #ifdef REPORT
 		//report_mutex_conflicts();
 		report_call_site_conflicts();
+		report_thread_waits();
 #endif
 
   }
-#if 0
+#if 1
   /// @brief Install a handler for KILL signals.
   void installSignalHandler() {
     struct sigaction siga;
@@ -102,7 +103,7 @@ public:
 		}
 #ifdef USING_SIGUSR2
     if (sigaction(SIGUSR2, &siga, NULL) == -1) {
-      perror ("installing SIGINT failed\n");
+      perror ("installing SIGUSR2 failed\n");
       exit (-1);
 		}
 #endif
@@ -110,6 +111,9 @@ public:
 
 	static void sigHandler(int signum) {
     if(signum == SIGINT) {
+			fprintf(stderr, "Recieved SIGINT, Genearting Report\n");
+			//report_mutex_conflicts();	
+			//report_thread_waits();
       exit(0);
     }
     else if (signum == SIGUSR2) {

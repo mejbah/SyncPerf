@@ -230,6 +230,11 @@ void inc_fail_count( mutex_meta_t *mutex, int idx )
   mutex->fail_count[idx]++;
 }
 
+void add_cond_wait_count( mutex_meta_t *mutex, int idx)
+{
+	mutex->cond_waits[idx]++;
+}
+
 void futex_start_timestamp( mutex_meta_t *mutex, int idx ) 
 {	
 	mutex->fail_count[idx]++;
@@ -449,7 +454,7 @@ class ConflictData{
 public:
 	UINT32 access_count;
 	UINT32 fail_count;
-	WAIT_TIME_TYPE cond_wait;
+	UINT32 cond_wait;
 
 	ConflictData( UINT32 access, UINT32 fail, WAIT_TIME_TYPE _cond_wait ){
 		access_count = access;
@@ -488,11 +493,11 @@ void report_call_site_conflicts() {
 			int tid;
 			UINT32 total_access_count = 0;
 			UINT32 total_fail_count = 0;
-			WAIT_TIME_TYPE total_cond_wait = 0;
+			UINT32  total_cond_wait = 0;
 			for( tid=0; tid<M_MAX_THREADS; tid++ ){
 				total_access_count += m->data[i].access_count[tid];
 				total_fail_count += m->data[i].fail_count[tid];
-				total_cond_wait += m->data[i].cond_futex_wait[tid];
+				total_cond_wait += m->data[i].cond_waits[tid];
 			}
 
 			//check the hashmap and update
@@ -514,17 +519,51 @@ void report_call_site_conflicts() {
 	std::fstream fs;
 	fs.open("mutex_call_site.csv", std::fstream::out);
   //mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
-	fs << "call stacks, lock_count, fail_count, cond_wait_time"<< std::endl;
+	fs << "call stacks, lock_count, fail_count, cond_waits"<< std::endl;
 
 //	std::map<std::string,ConflictData*>::iterator it;
 	
 	for( std::map<std::string,ConflictData*>::iterator it=call_site.begin(); it!=call_site.end(); ++it){
 		//if( it->second->fail_count > THRESHOLD_FAIL_COUNT && it->second->access_count > THRESHOLD_LOCK_COUNT  )
 		if(it->second->fail_count > 0 || it->second->cond_wait > 0)
-		fs << it->first <<", "<< it->second->access_count <<", "<< it->second->fail_count<< ", "<< elapsed2ms(it->second->cond_wait) << std::endl;
+		fs << it->first <<", "<< it->second->access_count <<", "<< it->second->fail_count<< ", "<< it->second->cond_wait << std::endl;
 	}
 	
 }
+
+/**
+	* per thread wait time in cond_wait (TODO: add barrier waits)
+  *
+  */
+void report_thread_waits() { 
+	UINT32 _thread_waits[xdefines::MAX_THREADS];
+	for(int i=0; i<xdefines::MAX_THREADS; i++){
+		_thread_waits[i] = 0;
+	}
+	std::vector<my_mutex_t*>::iterator it;
+	for(it = g_mutex_list.begin(); it != g_mutex_list.end(); ++it ) {
+		my_mutex_t *m = *it;
+		//std::cout << m->stack_count << std::endl;
+		int i;
+		for( i=0; i< m->stack_count; i++ ){
+				for( int tid=0; tid<xdefines::MAX_THREADS; tid++ ){
+					_thread_waits[tid] += m->data[i].cond_waits[tid];
+				}			
+		}
+	}
+
+	std::fstream fs;
+	fs.open("thread_waits.csv", std::fstream::out);
+  //mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
+	fs << "thread index, cond_waits"<< std::endl;
+	
+	for( int tid=0; tid<xdefines::MAX_THREADS; tid++ ){
+		if(_thread_waits[tid] != 0 )
+			fs << tid << "," << _thread_waits[tid] << std::endl;
+	}
+
+}
+
 
 #endif //REPORT
 
