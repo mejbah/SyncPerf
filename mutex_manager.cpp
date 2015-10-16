@@ -10,7 +10,10 @@
 #include "mutex_manager.h"
 //#include "libfuncs.h"
 #include "xdefines.h"
+#include <unistd.h>
 
+
+#define MAXBUFSIZE 4096
 //typedef std::map< std::vector<long>, std::vector<my_mutex_t*> > hash_map_t;
 //hash_map_t mutex_map; // hash map for call stack - mutex
 #ifndef ORIGINAL
@@ -358,21 +361,61 @@ int back_trace(long stacks[ ], int size)
 
 #ifdef REPORT
 
+std::string exec(const char* cmd) {
+    FILE* pipe = popen(cmd, "r");
+    if (!pipe) return "ERROR";
+    char buffer[128];
+    std::string result = "";
+    while (!feof(pipe)) {
+        if (fgets(buffer, 128, pipe) != NULL)
+            result += buffer;
+    }
+    pclose(pipe);
+    return result;
+}
+
 std::string get_call_stack_string( long *call_stack ){
 
+	char _curFilename[MAXBUFSIZE];
+	char buf[MAXBUFSIZE];
+	int count = readlink("/proc/self/exe", _curFilename, MAXBUFSIZE);
+  if (count <= 0 || count >= MAXBUFSIZE)
+  {
+    fprintf(stderr, "Failed to get current executable file name\n" );
+    exit(1);
+  }
+  _curFilename[count] = '\0';
+
+
+
 	std::string stack_str="";
-	std::stringstream ss;
+	//std::stringstream ss;
+	
 	int j=0;
 	while(call_stack[j] != 0 ) {
 		//printf("%#lx\n", m->stacks[i][j]);	
 		//std::cout << std::hex << m->stacks[i][j] << std::endl;
-		ss << std::hex << call_stack[j];
-		stack_str += ss.str();
-		ss.str("");
-		stack_str += " ";	
+	
+		//ss << std::hex << call_stack[j];
+	
+		sprintf(buf, "addr2line -e %s  -a 0x%lx  | tail -1", _curFilename, call_stack[j] );
+   
+		std::string source_line =  exec(buf);
+		//ss << source_line.erase(source_line.size()-1); // remove the newline at the end 
+		 
+		//stack_str += ss.str();		
+		//ss.str("");
+		if(source_line[0] != '?') { // not found
+			//get the file name only
+			std::size_t found = source_line.find_last_of("/\\");
+			source_line = source_line.substr(found+1);
+			stack_str += source_line.erase(source_line.size()-1); // remove the newline at the end
+			stack_str += " ";	
+		}
 		j++;
 	}
 
+	
 	return stack_str;
 }
 
