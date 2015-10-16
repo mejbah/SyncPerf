@@ -519,14 +519,14 @@ void report_call_site_conflicts() {
 	std::fstream fs;
 	fs.open("mutex_call_site.csv", std::fstream::out);
   //mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
-	fs << "call stacks, lock_count, fail_count, cond_waits"<< std::endl;
+	fs << "call stacks, lock_count, fail_count, lock_fail_ratio, cond_waits"<< std::endl;
 
 //	std::map<std::string,ConflictData*>::iterator it;
 	
 	for( std::map<std::string,ConflictData*>::iterator it=call_site.begin(); it!=call_site.end(); ++it){
 		//if( it->second->fail_count > THRESHOLD_FAIL_COUNT && it->second->access_count > THRESHOLD_LOCK_COUNT  )
 		if(it->second->fail_count > 0 || it->second->cond_wait > 0)
-		fs << it->first <<", "<< it->second->access_count <<", "<< it->second->fail_count<< ", "<< it->second->cond_wait << std::endl;
+		fs << it->first <<", "<< it->second->access_count <<", "<< it->second->fail_count<< ", " << (it->second->fail_count/it->second->access_count) << ", " << it->second->cond_wait << std::endl;
 	}
 	
 }
