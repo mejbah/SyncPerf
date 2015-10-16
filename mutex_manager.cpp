@@ -525,8 +525,12 @@ void report_call_site_conflicts() {
 	
 	for( std::map<std::string,ConflictData*>::iterator it=call_site.begin(); it!=call_site.end(); ++it){
 		//if( it->second->fail_count > THRESHOLD_FAIL_COUNT && it->second->access_count > THRESHOLD_LOCK_COUNT  )
-		if(it->second->fail_count > 0 || it->second->cond_wait > 0)
-		fs << it->first <<", "<< it->second->access_count <<", "<< it->second->fail_count<< ", " << (it->second->fail_count/it->second->access_count) << ", " << it->second->cond_wait << std::endl;
+		if(it->second->fail_count > 0 || it->second->cond_wait > 0) {
+			if(it->second->access_count > 0)
+				fs << it->first <<", "<< it->second->access_count <<", "<< it->second->fail_count<< ", " << ((100*it->second->fail_count)/it->second->access_count) << ", " << it->second->cond_wait << std::endl;
+			else
+				fs << it->first <<", "<< it->second->access_count <<", "<< it->second->fail_count<< ", " << "0 , " << it->second->cond_wait << std::endl;
+		}
 	}
 	
 }
