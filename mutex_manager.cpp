@@ -357,6 +357,25 @@ int back_trace(long stacks[ ], int size)
 
 
 #ifdef REPORT
+
+std::string get_call_stack_string( long *call_stack ){
+
+	std::string stack_str="";
+	std::stringstream ss;
+	int j=0;
+	while(call_stack[j] != 0 ) {
+		//printf("%#lx\n", m->stacks[i][j]);	
+		//std::cout << std::hex << m->stacks[i][j] << std::endl;
+		ss << std::hex << call_stack[j];
+		stack_str += ss.str();
+		ss.str("");
+		stack_str += " ";	
+		j++;
+	}
+
+	return stack_str;
+}
+
 void report() {
 	std::vector<my_mutex_t*>::iterator it;
 
@@ -373,6 +392,9 @@ void report() {
 		//std::cout << m->stack_count << std::endl;
 		int i;
 		for( i=0; i< m->stack_count; i++ ){
+
+			std::string stack_str = get_call_stack_string( m->stacks[i] );
+#if 0
 			//std::cout<<"stack: " << i << std::endl;
 			int j=0;
 
@@ -387,6 +409,7 @@ void report() {
 				stack_str += " ";
 				j++;
 			}
+#endif
 			int tid;
 			for( tid=0; tid<M_MAX_THREADS; tid++ ){
 				fs <<std::dec<< id << "," << stack_str << "," << tid << "," <<  m->data[i].futex_wait[tid] << ","
@@ -422,6 +445,8 @@ void report_mutex_conflicts() {
 		int i;
 		for( i=0; i< m->stack_count; i++ ){
 			//std::cout<<"stack: " << i << std::endl;
+			std::string stack_str = get_call_stack_string( m->stacks[i] );
+#if 0
 			int j=0;
 
 			std::string stack_str="";
@@ -435,6 +460,7 @@ void report_mutex_conflicts() {
 				stack_str += " ";
 				j++;
 			}
+#endif
 			int tid;
 			UINT32 total_access_count = 0;
 			UINT32 total_fail_count = 0;
@@ -477,6 +503,9 @@ void report_call_site_conflicts() {
 		//std::cout << m->stack_count << std::endl;
 		int i;
 		for( i=0; i< m->stack_count; i++ ){
+
+			std::string stack_str = get_call_stack_string( m->stacks[i] );
+#if 0
 			int j=0;
 
 			std::string stack_str="";
@@ -490,6 +519,7 @@ void report_call_site_conflicts() {
 				stack_str += " ";
 				j++;
 			}	
+#endif
 			int tid;
 			UINT32 total_access_count = 0;
 			UINT32 total_fail_count = 0;
