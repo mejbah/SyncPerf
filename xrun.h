@@ -82,7 +82,7 @@ public:
     // initialized: end the transaction (at the end of main()).
 //   	_memory.finalize();
 #ifdef REPORT
-		//report_mutex_conflicts();
+		report_mutex_conflicts();
 		report_call_site_conflicts();
 		report_thread_waits();
 #endif
