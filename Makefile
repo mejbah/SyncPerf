@@ -1,7 +1,7 @@
 #OBJS = nptl-init.o 
 CC = gcc
 #CFLAGS= -I. -D_GNU_SOURCE -fPIC -DORIGINAL -DMY_DEBUG
-CFLAGS= -g -O0 -fno-omit-frame-pointer -I. -D_GNU_SOURCE -fPIC -DREPORT -DWITH_TRYLOCK
+CFLAGS= -g -O2 -fno-omit-frame-pointer -I. -D_GNU_SOURCE -fPIC -DREPORT -DWITH_TRYLOCK
 LD = $(CC)
 LDFLAGS = -lpthread -ldl  -shared -lstdc++
 
