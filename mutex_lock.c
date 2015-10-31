@@ -69,19 +69,11 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
     //printf("---lock count: %u---\n", tmp->count);
     mutex = &tmp->mutex;
 		//mutex_meta_t *curr_meta = NULL;
-
-		long stack[MAX_CALL_STACK_DEPTH + 1];
-	  back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
 #ifndef NO_INCR // if not in cond_wait
+		long stack[MAX_CALL_STACK_DEPTH+1];
+	  back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
 		curr_meta = get_mutex_meta(tmp, stack); // TODO: do only for futex wait
 		add_access_count(curr_meta, idx);
-#else	//in cond wait , access count already added in cond_wait.c , call_stack starts one step deeper to match wiht cond_wait call
-		int i;
-		for(i = 0; i< MAX_CALL_STACK_DEPTH; i++){
-			stack[i] = stack[i+1];
-		}
-		stack[MAX_CALL_STACK_DEPTH] = 0; //it was already zero??
-		curr_meta = get_mutex_meta(tmp, stack);	
 #endif
 
 #endif	
@@ -185,7 +177,9 @@ simple:
 		//printf("PTHREAD_MUTEX_ADAPTIVE_NP\n");
 		if (LLL_MUTEX_TRYLOCK (mutex) != 0)
 		{
+#ifndef NO_INCR
 			futex_start_timestamp(curr_meta, idx);
+#endif
 			int cnt = 0;
 			int max_cnt = MIN (MAX_ADAPTIVE_COUNT,
 				mutex->__data.__spins * 2 + 10);
@@ -197,7 +191,9 @@ simple:
 					// LLL_MUTEX_LOCK (mutex->__data.__lock);//mejbah edited
 					//TODO: not calculting the spin waiting time/TRYLOCK fail
 					LLL_MUTEX_LOCK (mutex);
+#ifndef NO_INCR
 					add_futex_wait(curr_meta, idx);
+#endif
 					break;
 				}
 				
