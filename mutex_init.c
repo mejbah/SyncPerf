@@ -24,6 +24,11 @@ static const struct pthread_mutexattr default_mutexattr = {
 int pthread_mutex_init (pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr)
 {
 	const struct pthread_mutexattr *imutexattr;
+  my_mutex_t * myMutex = create_mutex(mutex);
+  *((void **)mutex) = myMutex;
+  pthread_mutex_t * realMutex = &myMutex->mutex;; 
+
+
 	assert (sizeof (pthread_mutex_t) <= __SIZEOF_PTHREAD_MUTEX_T);
 	imutexattr = ((const struct pthread_mutexattr *) mutexattr
 		?: &default_mutexattr);
@@ -49,10 +54,10 @@ int pthread_mutex_init (pthread_mutex_t *mutex, const pthread_mutexattr_t *mutex
 		break;
 	}
 	/* Clear the whole variable.  */
-	memset (mutex, '\0', __SIZEOF_PTHREAD_MUTEX_T);
+	memset (realMutex, '\0', __SIZEOF_PTHREAD_MUTEX_T);
 
 	/* Copy the values from the attribute.  */
-	mutex->__data.__kind = imutexattr->mutexkind & ~PTHREAD_MUTEXATTR_FLAG_BITS;
+	realMutex->__data.__kind = imutexattr->mutexkind & ~PTHREAD_MUTEXATTR_FLAG_BITS;
 
 	if ((imutexattr->mutexkind & PTHREAD_MUTEXATTR_FLAG_ROBUST) != 0)
 	{
@@ -61,15 +66,15 @@ int pthread_mutex_init (pthread_mutex_t *mutex, const pthread_mutexattr_t *mutex
 		//         && __set_robust_list_avail < 0)
 		//     return ENOTSUP;
 #endif
-		mutex->__data.__kind |= PTHREAD_MUTEX_ROBUST_NORMAL_NP;
+		realMutex->__data.__kind |= PTHREAD_MUTEX_ROBUST_NORMAL_NP;
 	}
 	switch (imutexattr->mutexkind & PTHREAD_MUTEXATTR_PROTOCOL_MASK)
 	{
 	case PTHREAD_PRIO_INHERIT << PTHREAD_MUTEXATTR_PROTOCOL_SHIFT:
-		mutex->__data.__kind |= PTHREAD_MUTEX_PRIO_INHERIT_NP;
+		realMutex->__data.__kind |= PTHREAD_MUTEX_PRIO_INHERIT_NP;
 		break;
 	case PTHREAD_PRIO_PROTECT << PTHREAD_MUTEXATTR_PROTOCOL_SHIFT:
-		mutex->__data.__kind |= PTHREAD_MUTEX_PRIO_PROTECT_NP;
+		realMutex->__data.__kind |= PTHREAD_MUTEX_PRIO_PROTECT_NP;
 		int ceiling = (imutexattr->mutexkind
 			& PTHREAD_MUTEXATTR_PRIO_CEILING_MASK)
 			>> PTHREAD_MUTEXATTR_PRIO_CEILING_SHIFT;
@@ -80,7 +85,7 @@ int pthread_mutex_init (pthread_mutex_t *mutex, const pthread_mutexattr_t *mutex
 			//if (ceiling < atomic_load_relaxed (&__sched_fifo_min_prio))
 			//    ceiling = atomic_load_relaxed (&__sched_fifo_min_prio);
 		}
-		mutex->__data.__lock = ceiling << PTHREAD_MUTEX_PRIO_CEILING_SHIFT;
+		realMutex->__data.__lock = ceiling << PTHREAD_MUTEX_PRIO_CEILING_SHIFT;
 		break;
 	default:
 		break;
@@ -90,7 +95,7 @@ int pthread_mutex_init (pthread_mutex_t *mutex, const pthread_mutexattr_t *mutex
 	* FUTEX_PRIVATE_FLAG FUTEX_WAKE.  */
 	if ((imutexattr->mutexkind & (PTHREAD_MUTEXATTR_FLAG_PSHARED
 		| PTHREAD_MUTEXATTR_FLAG_ROBUST)) != 0)
-		mutex->__data.__kind |= PTHREAD_MUTEX_PSHARED_BIT;
+		realMutex->__data.__kind |= PTHREAD_MUTEX_PSHARED_BIT;
 
 	/* Default values: mutex not used yet.  */
 	// mutex->__count = 0;	already done by memset
@@ -102,9 +107,6 @@ int pthread_mutex_init (pthread_mutex_t *mutex, const pthread_mutexattr_t *mutex
 	// LIBC_PROBE (mutex_init, 1, mutex);
 
     //mejbah added 
-#ifndef ORIGINAL
-    *(my_mutex_t**)mutex = create_mutex(mutex);
-#endif
                 
 	return 0;
 

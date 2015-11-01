@@ -25,8 +25,8 @@ my_mutex_t* create_mutex( pthread_mutex_t *mutex )
 {
     //printf("create my mutex\n");
     my_mutex_t *new_mutex =(my_mutex_t*)malloc(sizeof(my_mutex_t));
+		fprintf(stderr, "malloc new_mutex %p\n", new_mutex);
     new_mutex->count = 0;
-    new_mutex->mutex = *mutex;
 		new_mutex->stack_count = 0;
 //		memset(new_mutex->data, 0, sizeof(mutex_meta_t)*MAX_NUM_STACKS);
 #if 0 // TODO: do i really need to initialize array  with 0??
