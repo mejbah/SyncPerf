@@ -56,8 +56,66 @@ extern "C" {
 
 class xthread {
 private:
-    xthread() 
+	xthread() 
     { }
+		
+	inline static void setPrivateStackTop(bool isMainThread) {
+    //pid_t tid = gettid();
+    void* privateTop;
+
+    // Initialize the localized synchronization sequence number.
+    // pthread_t thread = current->self;
+    pthread_t thread = pthread_self();
+#if 0
+    if(isMainThread) {
+      void* stackBottom;
+      current->mainThread = true;
+
+      // First, we must get the stack corresponding information.
+      selfmap::getInstance().getStackInformation(&stackBottom, &privateTop);
+    } else
+#endif
+		{
+      /*
+        Currently, the memory layout of a thread private area is like the following.
+          ----------------------  Higher address
+          |      TCB           |
+          ---------------------- pd (pthread_self)
+          |      TLS           |
+          ----------------------
+          |      Stacktop      |
+          ---------------------- Lower address
+      */
+      //current->mainThread = false;
+      // Calculate the top of this page.
+      privateTop = (void*)(((intptr_t)thread + xdefines::PageSize) & ~xdefines::PAGE_SIZE_MASK);
+    }
+
+    //current->oldContext.setupStackInfo(privateTop, stackSize);
+    //current->newContext.setupStackInfo(privateTop, stackSize);
+    current->stackTop = privateTop;
+		unsigned int stackTop = (unsigned long)current->stackTop;
+		printf("thread %d stack top %p  & %p\n", current->index, current->stackTop, stackTop);
+    //current->stackBottom = (void*)((intptr_t)privateTop - stackSize);
+
+    // Now we can wakeup the parent since the parent must wait for the registe
+    //signal_thread(current);
+
+    //PRINF("THREAD%d (pthread_t %p) registered at %p, status %d wakeup %p. lock at %p\n",
+    //      current->index, (void*)current->self, current, current->status, &current->cond,
+    //      &current->mutex);
+
+    //unlock_thread(current);
+    //if(!isMainThread) {
+    //  // Save the context for non-main thread.
+    //  saveContext();
+    //}
+
+    //// WARN("THREAD%d (pthread_t %p) registered at %p", current->index, current->self, current );
+    //PRINF("THREAD%d (pthread_t %p) registered at %p, status %d\n", current->index,
+    //      (void*)current->self, current, current->status);
+  }
+
 
 public:
   static xthread& getInstance() {
@@ -74,6 +132,7 @@ public:
     _heapid = 0;
 		_predPerfImprovement = true;
 		_origThreadId = gettid();
+		total_threads = 0;
 
 		// Acquire the number of CPUs.
 		_numCPUs= sysconf(_SC_NPROCESSORS_ONLN);
@@ -107,7 +166,7 @@ public:
 
 		std::fstream fs;
 		fs.open("threads.csv", std::fstream::out);
-		for( int i=0; i<xdefines::MAX_THREADS; i++) {
+		for( int i=0; i<total_threads; i++) {
 			//if(i>0 && _threads[i].index == 0) break; //empty array fields	
 			fs << _threads[i].index << "," << std::hex <<(void*)( _threads[i].startRoutine)<< std::dec<< "," <<  _threads[i].actualRuntime << std::endl;
 		
@@ -137,10 +196,13 @@ public:
     tindex = allocThreadIndex();
 
 		assert(tindex == 0);
+		
+		total_threads++;
 
     // Get corresponding thread_t structure.
     current->self  = pthread_self();
     current->tid  = gettid();
+		//setPrivateStackTop(true);
   }
 
   thread_t * getThreadInfoByIndex(int index) {
@@ -180,7 +242,7 @@ public:
 
 		info->elapse = elapsed2ms(stop(&info->startTime, NULL));
 
-		fprintf(stderr, "PHASE end %ld\n", info->elapse);
+		//fprintf(stderr, "PHASE end %ld\n", info->elapse);
 	}
 
 	unsigned long getTotalThreadLevels(void) {
@@ -289,6 +351,8 @@ public:
     
     children->startRoutine = fn;
     children->startArg = arg;
+		
+		total_threads++;
 
     result =  WRAP(pthread_create)(tid, attr, startThread, (void *)children);
 		
@@ -355,6 +419,8 @@ public:
     current->self = pthread_self();
 		current->tid = gettid();
 
+		//setPrivateStackTop(false);
+
 //		fprintf(stderr, "CHILD:tid %d index %d\n", current->tid, current->index);
     // from the TLS storage.
     result = current->startRoutine(current->startArg);
@@ -365,6 +431,8 @@ public:
 
     return result;
   }
+
+	void* getPrivateStackTop() {return current->stackTop;}
 	
 	// In the end, we should compute the total latency.
 	unsigned long getTotalLatency(int startIndex, int stopIndex) {
@@ -428,6 +496,9 @@ public:
 
 	}
 
+	inline int getTotalThreads() { return total_threads; }
+
+
 
 private:
   /// @brief Lock the lock.
@@ -490,7 +561,7 @@ private:
 
     global_unlock();
   }
-
+	
 
   pthread_mutex_t _lock;
   volatile unsigned long _threadIndex;
@@ -498,8 +569,9 @@ private:
   int _tid;
 	int _numCPUs;
 	pid_t _origThreadId;
-	int _heapid;
-		
+	int _heapid;	
+
+	int total_threads;
 	// We are adding a total latency here.
 	bool  _predPerfImprovement;
 

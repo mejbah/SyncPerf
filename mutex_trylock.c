@@ -33,20 +33,20 @@ pthread_mutex_trylock (pthread_mutex_t *mutex) {
   //printf("---lock count: %u---\n", tmp->count);
   mutex = &tmp->mutex;
 	mutex_meta_t *curr_meta = NULL;
-	
+
+#if 1
 	long stack[MAX_CALL_STACK_DEPTH + 1];
 	back_trace(stack, MAX_CALL_STACK_DEPTH);
-#if MY_DEBUG
-	int top = -1;
-	printf("call stack \n");
-	while(stack[top++] != 0 && top < MAX_CALL_STACK_DEPTH)
-		printf("%#lx\n", stack[top]);	
-	printf("end of stack \n");
-#endif //MY_DEBUG
 	curr_meta = get_mutex_meta(tmp, stack);
+#else
+	unsigned int ebp;
+	asm volatile("movl %%ebp,%0\n"
+                 : "=r"(ebp));
+	curr_meta = get_call_site_mutex(tmp, ebp);
+#endif
 #ifdef WITH_TRYLOCK
 	add_access_count(curr_meta, idx);
-	trylock_first_timestamp(curr_meta,idx); // get timestamp for first try only by a thread
+	//trylock_first_timestamp(curr_meta,idx); // get timestamp for first try only by a thread
 #endif //WITH_TRYLOCK
 #endif //ORIGINAL
 
@@ -58,7 +58,7 @@ pthread_mutex_trylock (pthread_mutex_t *mutex) {
 		inc_trylock_fail_count(curr_meta, idx);
 	}
   else {
-		add_trylock_fail_time(curr_meta,idx);
+		//add_trylock_fail_time(curr_meta,idx);
 	}
 #endif //WITH_TRYLOCK
 #endif //ORIGINAL
@@ -71,22 +71,6 @@ int
 do_mutex_trylock (pthread_mutex_t *mutex)
 {
 	int oldval;
-#ifdef MY_DEBUG
-	printf("In my pthread mutex trylock\n");
-#endif
-
-//#ifndef ORIGINAL
-//    if( !is_my_mutex(mutex) )
-//    {
-//        my_mutex_t *new_mutex = create_mutex(mutex);
-//        setSyncEntry(mutex, new_mutex);
-//    }
-//    my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
-//    tmp->count = tmp->count + 1;
-//    //printf("---lock count: %u---\n", tmp->count);
-//    mutex = &tmp->mutex;
-//#endif
-//
 	pid_t id = THREAD_GETMEM (THREAD_SELF, tid);
 
 	switch (__builtin_expect (PTHREAD_MUTEX_TYPE_ELISION (mutex),

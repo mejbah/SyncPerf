@@ -71,8 +71,15 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
 		//mutex_meta_t *curr_meta = NULL;
 #ifndef NO_INCR // if not in cond_wait
 		long stack[MAX_CALL_STACK_DEPTH+1];
+#if 1
 	  back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
 		curr_meta = get_mutex_meta(tmp, stack); // TODO: do only for futex wait
+#else
+		unsigned int ebp;
+		asm volatile("movl %%ebp,%0\n"
+                 : "=r"(ebp));
+		curr_meta = get_call_site_mutex(tmp, ebp);
+#endif
 		add_access_count(curr_meta, idx);
 #endif
 
@@ -132,8 +139,7 @@ simple:
 		if(mutex->__data.__lock == 2) { 
 			futex_flag=1; 
 			
-			//long stack[MAX_CALL_STACK_DEPTH + 1];
-			//back_trace(stack, MAX_CALL_STACK_DEPTH);
+
 #if MY_DEBUG
 			int top = -1;
 			printf("call stack \n");
@@ -141,7 +147,6 @@ simple:
 				printf("%#lx\n", stack[top]);	
 			printf("end of stack \n");
 #endif
-			//curr_meta = get_mutex_meta(tmp, stack);
 			//futex_start_timestamp(curr_meta, idx);			
 			inc_fail_count(curr_meta, idx);
 			start_timestamp(&wait_start);

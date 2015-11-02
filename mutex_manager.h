@@ -9,24 +9,28 @@ extern "C" {
 #endif
 
 #include "finetime.h"
-//#include "xdefines.h"
 
-#define M_MAX_THREADS 2048 // TODO: fix this equal to xdefines::MAX_THREADS
-#define MAX_CALL_STACK_DEPTH 10
-#define MAX_NUM_STACKS 512
+
+#define M_MAX_THREADS 32 // TODO: fix this equal to xdefines::MAX_THREADS
+#define MAX_CALL_STACK_DEPTH 3
+#define MAX_NUM_STACKS 256
 
 typedef unsigned long WAIT_TIME_TYPE;
 //typedef double  WAIT_TIME_TYPE;
 typedef unsigned int UINT32;
 
 typedef struct {
-	struct timeinfo trylock_first[M_MAX_THREADS]; // has to be zero initialized
-	WAIT_TIME_TYPE trylock_wait_time[M_MAX_THREADS];
-	int trylock_flag[M_MAX_THREADS];
+	//struct timeinfo trylock_first[M_MAX_THREADS]; // has to be zero initialized
+	//WAIT_TIME_TYPE trylock_wait_time[M_MAX_THREADS];
+	//int trylock_flag[M_MAX_THREADS];
 	int trylock_fail_count[M_MAX_THREADS]; 
+	//int trylock_fail_count;
 	UINT32 access_count[M_MAX_THREADS]; // for conflict rate
+	//UINT32 access_count;
 	UINT32 fail_count[M_MAX_THREADS]; // for conflict rate
+	//UINT32 fail_count;
 	UINT32 cond_waits[M_MAX_THREADS]; // number of cond_wait 
+	//UINT32 cond_waits;
 
 //  struct timeinfo futex_start[M_MAX_THREADS]; //futex start time
 	WAIT_TIME_TYPE futex_wait[M_MAX_THREADS]; // time spend in futex wait
@@ -39,6 +43,8 @@ typedef struct {
 	pthread_mutex_t mutex;
 	UINT32 stack_count; // how many different call sites
 	long stacks[MAX_NUM_STACKS][MAX_CALL_STACK_DEPTH+1];
+	//unsigned int ebp_offset[MAX_NUM_STACKS];
+	//unsigned int ret_address[MAX_NUM_STACKS];
 	mutex_meta_t data[MAX_NUM_STACKS]; // all the meta data collections
 }my_mutex_t;
 
@@ -49,7 +55,7 @@ int is_my_mutex(void *mutex);
 void* get_mutex( void *mutex );
 
 
-void add_call_stack( my_mutex_t *mutex, long call_stack[] );
+void add_call_stack( my_mutex_t *mutex, long call_stack[], int idx );
 
 //return 1 if match, otherwise 0
 int comp_stack( long s1[], long s2[] );
@@ -61,6 +67,7 @@ int comp_stack( long s1[], long s2[] );
 
 mutex_meta_t* get_mutex_meta( my_mutex_t *mutex, long call_stack[] );
 
+//mutex_meta_t* get_call_site_mutex( my_mutex_t *mutex, unsigned int ebp );
 
 #if 1
 void add_access_count( mutex_meta_t *mutex, int idx);
@@ -78,9 +85,9 @@ void add_futex_wait( mutex_meta_t *mutex, int idx, struct timeinfo *st );
 
 void add_cond_wait( mutex_meta_t *mutex, int idx, struct timeinfo *st);
 
-void add_trylock_fail_time( mutex_meta_t *mutex, int idx );
+//void add_trylock_fail_time( mutex_meta_t *mutex, int idx );
 
-void trylock_first_timestamp( mutex_meta_t *mutex, int idx );
+//void trylock_first_timestamp( mutex_meta_t *mutex, int idx );
 
 void inc_trylock_fail_count( mutex_meta_t *mutex, int idx );
 #else
@@ -122,6 +129,7 @@ extern void * __libc_stack_end;
 
 
 int back_trace(long stacks[ ], int size);
+int do_backtrace(long stacks[ ], int size);
 #if 0
 static int back_trace(long stacks[ ], int size)
 {

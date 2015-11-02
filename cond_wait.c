@@ -107,10 +107,17 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
   mutex = &tmp->mutex;
 	mutex_meta_t *curr_meta = NULL;
 	struct timeinfo *wait_start;
-	
+
+#if 1	
 	long stack[MAX_CALL_STACK_DEPTH + 1];
 	back_trace(stack, MAX_CALL_STACK_DEPTH);
 	curr_meta = get_mutex_meta(tmp, stack);	
+#else
+		unsigned int ebp;
+		asm volatile("movl %%ebp,%0\n"
+                 : "=r"(ebp));
+		curr_meta = get_call_site_mutex(tmp, ebp);
+#endif
 	//add_access_count(curr_meta, idx);
 	//add_cond_wait_count(curr_meta,idx);
 #endif
@@ -155,11 +162,6 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	/* Remember the broadcast counter.  */
 	cbuffer.bc_seq = cond->__data.__broadcast_seq;
 #ifndef ORIGINAL
-  //mejbah added for wait time
-	//long stack[MAX_CALL_STACK_DEPTH + 1];
-	//back_trace(stack, MAX_CALL_STACK_DEPTH);
-
-	//curr_meta = get_mutex_meta(tmp, stack);	
 	//futex_start_timestamp(curr_meta, idx); // not the right place 
 	int wait_start_flag = 0;
 	//mejbah added end
@@ -218,7 +220,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 			if(wait_start_flag == 0) {
 				add_cond_wait_count(curr_meta,idx);
 				//cond_start_timestamp(curr_meta, idx);
-				start_timestamp(wait_start);
+				start_timestamp(&wait_start);
 				wait_start_flag = 1;
 			}
 		}
@@ -266,7 +268,7 @@ bc_out:
 #else
 		int ret = __pthread_mutex_cond_lock (orig_mutex);
 		if(wait_start_flag)
-			add_cond_wait(curr_meta, idx, wait_start);
+			add_cond_wait(curr_meta, idx, &wait_start);
 #endif
 	
 }
