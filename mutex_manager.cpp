@@ -265,8 +265,8 @@ void add_futex_wait( mutex_meta_t *mutex, int idx, struct timeinfo *st )
 	//struct timeinfo *st = &mutex->futex_start[idx];
 	//mutex->futex_wait[idx] = stop(&(mutex->futex_start[idx]), &end);
 	double elapse = stop(st, &end); 
-	mutex->futex_wait[idx] += elapse;
-//	mutex->futex_wait[idx] += elapsed2ms(elapse);
+	//mutex->futex_wait[idx] += elapse;
+  mutex->futex_wait[idx] += elapsed2ms(elapse);
 }
 
 void add_cond_wait( mutex_meta_t *mutex, int idx, struct timeinfo *st )
@@ -275,8 +275,8 @@ void add_cond_wait( mutex_meta_t *mutex, int idx, struct timeinfo *st )
 	//struct timeinfo *st = &mutex->futex_start[idx];
 	//mutex->futex_wait[idx] = stop(&(mutex->futex_start[idx]), &end);
 	double elapse = stop(st, &end); 
-	mutex->cond_futex_wait[idx] += elapse;
-	//mutex->cond_futex_wait[idx] += elapsed2ms(elapse);
+	//mutex->cond_futex_wait[idx] += elapse;
+	mutex->cond_futex_wait[idx] += elapsed2ms(elapse);
 }
 
 #ifdef WITH_TRYLOCK
@@ -297,8 +297,8 @@ void add_trylock_fail_time( mutex_meta_t *mutex, int idx )
 		struct timeinfo end;
 		struct timeinfo *st = &mutex->trylock_first[idx];
 		double elapse = stop(st, &end); 
-		mutex->trylock_wait_time[idx] += elapse;
-		//mutex->trylock_wait_time[idx] += elapsed2ms(elapse);
+		//mutex->trylock_wait_time[idx] += elapse;
+		mutex->trylock_wait_time[idx] += elapsed2ms(elapse);
 	}
 	mutex->trylock_flag[idx] = 0;
 	
