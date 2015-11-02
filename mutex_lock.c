@@ -52,7 +52,7 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
     //printf("In my pthread mutex lock\n");
 
 	mutex_meta_t *curr_meta = NULL;
-
+	struct timeinfo wait_start;
 
 #ifndef ORIGINAL
 		int idx = getThreadIndex();
@@ -142,32 +142,22 @@ simple:
 			printf("end of stack \n");
 #endif
 			//curr_meta = get_mutex_meta(tmp, stack);
-			futex_start_timestamp(curr_meta, idx);			
+			//futex_start_timestamp(curr_meta, idx);			
+			inc_fail_count(curr_meta, idx);
+			start_timestamp(&wait_start);
 		}
 #endif
 #endif
 		LLL_MUTEX_LOCK (mutex);
 		assert (mutex->__data.__owner == 0);
-#ifndef NO_INCR
 #ifndef ORIGINAL
+#ifndef NO_INCR
 		if(futex_flag) {
 			 
-			add_futex_wait(curr_meta, idx);
+			add_futex_wait(curr_meta, idx, &wait_start);
 			futex_flag=0;
 		}
 #endif
-//#endif
-#else //condition wait final lock grab
-		//int idx = getThreadIndex();
-		//my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
-    //tmp->count = tmp->count + 1; 
-		//long stack[MAX_CALL_STACK_DEPTH + 1];
-	  //back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
-		//curr_meta = get_mutex_meta(tmp, stack); 
-#ifndef ORIGINAL
-//    add_cond_wait(curr_meta, idx); 
-#endif
-
 #endif
 		break;
 
@@ -178,7 +168,8 @@ simple:
 		if (LLL_MUTEX_TRYLOCK (mutex) != 0)
 		{
 #ifndef NO_INCR
-			futex_start_timestamp(curr_meta, idx);
+			//futex_start_timestamp(curr_meta, idx);
+			start_timestamp(&wait_start);
 #endif
 			int cnt = 0;
 			int max_cnt = MIN (MAX_ADAPTIVE_COUNT,
@@ -192,7 +183,7 @@ simple:
 					//TODO: not calculting the spin waiting time/TRYLOCK fail
 					LLL_MUTEX_LOCK (mutex);
 #ifndef NO_INCR
-					add_futex_wait(curr_meta, idx);
+					add_futex_wait(curr_meta, idx, &wait_start);
 #endif
 					break;
 				}

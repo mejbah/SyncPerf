@@ -15,8 +15,8 @@ extern "C" {
 #define MAX_CALL_STACK_DEPTH 10
 #define MAX_NUM_STACKS 512
 
-//typedef unsigned long WAIT_TIME_TYPE;
-typedef double  WAIT_TIME_TYPE;
+typedef unsigned long WAIT_TIME_TYPE;
+//typedef double  WAIT_TIME_TYPE;
 typedef unsigned int UINT32;
 
 typedef struct {
@@ -28,7 +28,7 @@ typedef struct {
 	UINT32 fail_count[M_MAX_THREADS]; // for conflict rate
 	UINT32 cond_waits[M_MAX_THREADS]; // number of cond_wait 
 
-  struct timeinfo futex_start[M_MAX_THREADS]; //futex start time
+//  struct timeinfo futex_start[M_MAX_THREADS]; //futex start time
 	WAIT_TIME_TYPE futex_wait[M_MAX_THREADS]; // time spend in futex wait
 	WAIT_TIME_TYPE cond_futex_wait[M_MAX_THREADS]; // time spend in cond wait
 		
@@ -67,14 +67,16 @@ void add_access_count( mutex_meta_t *mutex, int idx);
 void inc_fail_count( mutex_meta_t *mutex, int idx ); // conflict rate
 void add_cond_wait_count( mutex_meta_t *mutex, int idx);
 
+void start_timestamp( struct timeinfo *st ); 
 
-void futex_start_timestamp( mutex_meta_t *mutex, int idx );
+//void futex_start_timestamp( mutex_meta_t *mutex, int idx );
 
-void cond_start_timestamp( mutex_meta_t *mutex, int idx );
+//void cond_start_timestamp( mutex_meta_t *mutex, int idx );
 
-void add_futex_wait( mutex_meta_t *mutex, int idx );
+//void add_futex_wait( mutex_meta_t *mutex, int idx );
+void add_futex_wait( mutex_meta_t *mutex, int idx, struct timeinfo *st );
 
-void add_cond_wait( mutex_meta_t *mutex, int idx );
+void add_cond_wait( mutex_meta_t *mutex, int idx, struct timeinfo *st);
 
 void add_trylock_fail_time( mutex_meta_t *mutex, int idx );
 

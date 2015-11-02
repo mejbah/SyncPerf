@@ -238,6 +238,7 @@ void add_cond_wait_count( mutex_meta_t *mutex, int idx)
 	mutex->cond_waits[idx]++;
 }
 
+/*
 void futex_start_timestamp( mutex_meta_t *mutex, int idx ) 
 {	
 	mutex->fail_count[idx]++;
@@ -245,28 +246,33 @@ void futex_start_timestamp( mutex_meta_t *mutex, int idx )
 	//start(&(mutex->futex_start[idx]));
 	start(st);
 }
-
+*/
+void start_timestamp( struct timeinfo *st ) 
+{	
+		start(st);
+}
+/*
 void cond_start_timestamp( mutex_meta_t *mutex, int idx ) 
 {
 	struct timeinfo *st = &mutex->futex_start[idx];
 	//start(&(mutex->futex_start[idx]));
 	start(st);
 }
-
-void add_futex_wait( mutex_meta_t *mutex, int idx )
+*/
+void add_futex_wait( mutex_meta_t *mutex, int idx, struct timeinfo *st )
 {
 	struct timeinfo end;
-	struct timeinfo *st = &mutex->futex_start[idx];
+	//struct timeinfo *st = &mutex->futex_start[idx];
 	//mutex->futex_wait[idx] = stop(&(mutex->futex_start[idx]), &end);
 	double elapse = stop(st, &end); 
 	mutex->futex_wait[idx] += elapse;
 //	mutex->futex_wait[idx] += elapsed2ms(elapse);
 }
 
-void add_cond_wait( mutex_meta_t *mutex, int idx )
+void add_cond_wait( mutex_meta_t *mutex, int idx, struct timeinfo *st )
 {
 	struct timeinfo end;
-	struct timeinfo *st = &mutex->futex_start[idx];
+	//struct timeinfo *st = &mutex->futex_start[idx];
 	//mutex->futex_wait[idx] = stop(&(mutex->futex_start[idx]), &end);
 	double elapse = stop(st, &end); 
 	mutex->cond_futex_wait[idx] += elapse;

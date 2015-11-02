@@ -99,20 +99,20 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	int pi_flag = 0;
 #endif
 #ifndef ORIGINAL
-		 pthread_mutex_t *orig_mutex;
-		 orig_mutex = mutex; //store for passing in the cond_lock func
-		 int idx = getThreadIndex();
-     my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
-		 tmp->count = tmp->count + 1; // no of times mutex accessed
-     mutex = &tmp->mutex;
-		 mutex_meta_t *curr_meta = NULL;
-		
-		long stack[MAX_CALL_STACK_DEPTH + 1];
-		back_trace(stack, MAX_CALL_STACK_DEPTH);
-		curr_meta = get_mutex_meta(tmp, stack);	
-		//add_access_count(curr_meta, idx);
-		add_cond_wait_count(curr_meta,idx);
-
+	pthread_mutex_t *orig_mutex;
+	orig_mutex = mutex; //store for passing in the cond_lock func
+	int idx = getThreadIndex();
+  my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
+	tmp->count = tmp->count + 1; // no of times mutex accessed
+  mutex = &tmp->mutex;
+	mutex_meta_t *curr_meta = NULL;
+	struct timeinfo *wait_start;
+	
+	long stack[MAX_CALL_STACK_DEPTH + 1];
+	back_trace(stack, MAX_CALL_STACK_DEPTH);
+	curr_meta = get_mutex_meta(tmp, stack);	
+	//add_access_count(curr_meta, idx);
+	//add_cond_wait_count(curr_meta,idx);
 #endif
 
 	//LIBC_PROBE (cond_wait, 2, cond, mutex);
@@ -122,11 +122,11 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 
 	/* Now we can release the mutex.  */
 	err = __pthread_mutex_unlock_usercnt (mutex, 0);
-    if (err)
-    {
-      lll_unlock (cond->__data.__lock, pshared);
-      return err;
-    }
+  if (err)
+  {
+    lll_unlock (cond->__data.__lock, pshared);
+    return err;
+  }
 
 	/* We have one new user of the condvar.  */
 	++cond->__data.__total_seq;
@@ -158,13 +158,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
   //mejbah added for wait time
 	//long stack[MAX_CALL_STACK_DEPTH + 1];
 	//back_trace(stack, MAX_CALL_STACK_DEPTH);
-#if MY_DEBUG
-	int top = -1;
-	printf("call stack \n");
-	while(stacks[top++] != 0 && top < MAX_CALL_STACK_DEPTH)
-		printf("%#lx\n", stacks[top]);	
-	printf("end of stack \n");
-#endif
+
 	//curr_meta = get_mutex_meta(tmp, stack);	
 	//futex_start_timestamp(curr_meta, idx); // not the right place 
 	int wait_start_flag = 0;
@@ -201,14 +195,14 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 		}
 		else 
 #endif
-        {
+		{
 #ifdef MY_DEBUG
             printf("In my pthread cond wait\n");
 #endif
 
 			/* Wait until woken by signal or broadcast.  */
 			lll_futex_wait (&cond->__data.__futex, futex_val, pshared);
-        }
+		}
 
 		/* Disable asynchronous cancellation.  */
 		__pthread_disable_asynccancel (cbuffer.oldtype);
@@ -222,7 +216,9 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 #ifndef ORIGINAL
 		else { //mejbah added for start timestamp of condwait
 			if(wait_start_flag == 0) {
-				cond_start_timestamp(curr_meta, idx);
+				add_cond_wait_count(curr_meta,idx);
+				//cond_start_timestamp(curr_meta, idx);
+				start_timestamp(wait_start);
 				wait_start_flag = 1;
 			}
 		}
@@ -254,12 +250,6 @@ bc_out:
 	/* The cancellation handling is back to normal, remove the handler.  */
 	 __pthread_cleanup_pop (&buffer, 0);
 
-#ifndef ORIGINAL
-	//mejbah added for wait time
-	if(wait_start_flag)
-	add_cond_wait(curr_meta, idx); //in mutex_lock.c
-	//mejbah added end
-#endif
 
 	/* Get the mutex before returning.  Not needed for PI.  */
 #if (defined lll_futex_wait_requeue_pi \
@@ -270,11 +260,13 @@ bc_out:
 	      return 0;
 	    }
 	  else
-	#endif
+#endif
 #ifdef ORIGINAL
-	    return __pthread_mutex_cond_lock (mutex);
+	  return __pthread_mutex_cond_lock (mutex);
 #else
-			return __pthread_mutex_cond_lock (orig_mutex);
+		int ret = __pthread_mutex_cond_lock (orig_mutex);
+		if(wait_start_flag)
+			add_cond_wait(curr_meta, idx, wait_start);
 #endif
 	
 }
