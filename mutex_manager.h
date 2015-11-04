@@ -15,6 +15,7 @@ extern "C" {
 #define MAX_CALL_STACK_DEPTH 3
 #define MAX_NUM_STACKS 256
 
+extern volatile unsigned long totalLocks;
 typedef unsigned long WAIT_TIME_TYPE;
 //typedef double  WAIT_TIME_TYPE;
 typedef unsigned int UINT32;

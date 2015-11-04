@@ -44,7 +44,7 @@
 //#ifdef __cplusplus
 //extern "C" {
 //#endif
-#if GET_STATISTICS
+#ifdef GET_STATISTICS
 volatile unsigned long totalLocks;
 #endif
 
@@ -53,7 +53,7 @@ int
 pthread_mutex_lock (pthread_mutex_t *mutex)
 {
     //printf("In my pthread mutex lock\n");
-#if GET_STATISTICS
+#ifdef GET_STATISTICS
 	__atomic_add_fetch(&totalLocks, 1, __ATOMIC_RELAXED);
 #endif
 

@@ -21,7 +21,7 @@
 
 int
 pthread_mutex_trylock (pthread_mutex_t *mutex) {
-#if GET_STATISTICS
+#ifdef GET_STATISTICS
   __atomic_add_fetch(&totalLocks, 1, __ATOMIC_RELAXED);
 #endif
 
