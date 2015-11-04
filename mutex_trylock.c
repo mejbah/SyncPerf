@@ -21,6 +21,10 @@
 
 int
 pthread_mutex_trylock (pthread_mutex_t *mutex) {
+#if GET_STATISTICS
+  __atomic_add_fetch(&totalLocks, 1, __ATOMIC_RELAXED);
+#endif
+
 #ifndef ORIGINAL
 	int idx = getThreadIndex();
   if( !is_my_mutex(mutex) )

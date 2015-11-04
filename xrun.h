@@ -63,6 +63,8 @@ public:
   /// @brief Initialize the system.
   void initialize()
   {
+		totalLocks = 0;
+
 		installSignalHandler();
 //    InternalHeap::getInstance().initialize();
 
@@ -76,6 +78,10 @@ public:
 
   void finalize (void)
   {
+#ifdef GET_STATISTICS
+	fprintf(stderr, "total locks in this program is %ld\n", totalLocks);
+#endif
+
 		xthread::getInstance().finalize();
 
     // If the tid was set, it means that this instance was

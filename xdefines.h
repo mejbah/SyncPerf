@@ -107,6 +107,7 @@ extern "C"
     void * stackTop;
   } thread_t;
 
+	extern unsigned long totalLocks;
   extern unsigned long textStart, textEnd;
   extern unsigned long globalStart, globalEnd;
   extern unsigned long heapStart, heapEnd;
