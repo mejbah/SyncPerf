@@ -377,7 +377,7 @@ int back_trace(long stacks[ ], int size)
 
 	void report() {
 		
-		int total_threads = xthread::getInstance().getTotalThreads();
+		int total_threads = xthread::getInstance().getMaxThreadIndex();
 
 		WAIT_TIME_TYPE *thread_waits = malloc(sizeof(WAIT_TIME_TYPE)*total_threads);
 		for(int idx=0; idx<total_threads; idx++) thread_waits[idx] = 0;	
@@ -457,7 +457,7 @@ int back_trace(long stacks[ ], int size)
 
 		for(int idx=0; idx< total_threads; idx++){
 			thread_t *thd = xthread::getInstance().getThreadInfoByIndex(idx);
-			thd_fs << idx << ", " << std::hex <<(void*)( thd[idx].startRoutine)<< ", " <<std::dec<< (thd[idx].actualRuntime - thread_waits[idx]) << std::endl;
+			thd_fs << idx << ", " << std::hex <<(void*)( thd->startRoutine)<< ", " <<std::dec<< (thd->actualRuntime - thread_waits[idx]) << std::endl;
 		}
 
 		thd_fs.close();	
