@@ -70,7 +70,7 @@ int setSyncEntry( void* syncvar, void* realvar) {
   int ret = 0;
   unsigned long* target = (unsigned long*)syncvar;
   unsigned long expected = *(unsigned long*)target;
-  
+ 
   if( !is_my_mutex(target) ) //double check
   {
       if(__sync_bool_compare_and_swap(target, expected, (unsigned long)realvar)) 
@@ -80,6 +80,7 @@ int setSyncEntry( void* syncvar, void* realvar) {
       }
 			
   }
+
   return ret;
 }
 
@@ -127,34 +128,18 @@ int comp_stack( long s1[], long s2[] ){
 #endif
 
 int add_new_context( mutex_t *mutex, long ret_address, unsigned int ebp_offset ) {
-
-	if(mutex->stack_count == 0){
-		int new_val = 1;
-    int old_val = 0;
-    int val = __atomic_compare_exchange(&mutex->stack_count, &old_val,&new_val,false,__ATOMIC_RELAXED,__ATOMIC_RELAXED);
-		//__atomic_fetch_add( &mutex->stack_count, 1, __ATOMIC_RELAXED );
-		if(val==0){
-			mutex->ebp_offset[0] = ebp_offset;
-      mutex->ret_address[0] = ret_address;
-      do_backtrace(mutex->stacks[0], MAX_CALL_STACK_DEPTH);
+	for( int i=0; i< mutex->stack_count; i++ ){
+    if(mutex->ebp_offset[i] == ebp_offset) {
+			return 0;
 		}
-	}
-	for( int i=0; i<mutex->stack_count; i++ ){
-    if(mutex->ebp_offset[i] == ebp_offset)
-      if( mutex->ret_address[i] == ret_address) {
-        return 0;
-      }
   }
-	
-	//not found
+
   assert(mutex->stack_count < MAX_NUM_STACKS);
-
+	
   // increment stack count atomically
-  int val = __atomic_fetch_add(&mutex->stack_count, 1, __ATOMIC_RELAXED);
-  do_backtrace(mutex->stacks[val], MAX_CALL_STACK_DEPTH);
-  mutex->ebp_offset[val] = ebp_offset;
-  mutex->ret_address[val] = ret_address;
-
+  do_backtrace(mutex->stacks[mutex->stack_count], MAX_CALL_STACK_DEPTH);
+  mutex->ebp_offset[mutex->stack_count] = ebp_offset;
+	mutex->stack_count++;
   return 0;
 }
 
