@@ -453,10 +453,11 @@ int back_trace(long stacks[ ], int size)
 		std::fstream thd_fs;
 
 		thd_fs.open("thread_waits.csv", std::fstream::out);
-		thd_fs << "tid,wait_time" << std::endl; 
+		thd_fs << "tid, type, runtime" << std::endl; 
 
 		for(int idx=0; idx< total_threads; idx++){
-			thd_fs << idx << "," << thread_waits[idx] << std::endl;
+			thread_t *thd = xthread::getInstance().getThreadInfoByIndex(idx);
+			thd_fs << idx << ", " << std::hex <<(void*)( thd[idx].startRoutine)<< ", " <<std::dec<< (thd[idx].actualRuntime - thread_waits[idx]) << std::endl;
 		}
 
 		thd_fs.close();	
