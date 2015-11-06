@@ -412,10 +412,9 @@ int back_trace(long stacks[ ], int size)
 			unsigned int total_cond_wait = 0;
 			unsigned int total_trylock_fails = 0;
 			WAIT_TIME_TYPE total_wait_time = 0;
-			WAIT_TIME_TYPE total_lock_wait = 0;
+			WAIT_TIME_TYPE total_lock_wait = 0;			
 
-			
-
+			// sum all thread local data
 			for(int idx=0; idx<total_threads; idx++ ){
 			  thread_mutex_t *per_thd_data =get_thread_mutex_data( m->entry_index, idx);
 				total_access_count += per_thd_data->access_count;
@@ -425,20 +424,36 @@ int back_trace(long stacks[ ], int size)
 				total_wait_time += per_thd_data->cond_futex_wait;
 				total_lock_wait += per_thd_data->futex_wait;
 			}
+
 			double conflict_rate;
 			if( total_access_count > 0 ) { //TODO: access_count = 0 is poosible as fix setSyncEntry ignores new mutex ,index already increased in recordentries
 					id++;
 					//print call stacks
+#ifndef REPORT_LINE_INFO
+					fs << std::dec << id << ",";
+#endif
 					std::string call_contexts = "";
-
 					for(int con=0; con<m->stack_count; con++){
 						call_contexts += " ::";
+#ifdef REPORT_LINE_INFO
 						call_contexts += get_call_stack_string(m->stacks[con]);		
+#else
+						int depth = 0;
+						fs << " ::";
+						while(m->stacks[con][depth]){
+								fs << std::hex << " 0x" << m->stacks[con][depth];
+								depth++; 
+						}									
+#endif 
 					}
+
 		
 					double conflict_rate = total_fail_count/double(total_access_count);
 					//if(conflict_rate > 0 )
-					fs <<std::dec<< id << ","<<call_contexts << "," <<  total_access_count << "," << total_fail_count << "," << conflict_rate<< "," << total_cond_wait << "," << total_trylock_fails <<"," << total_lock_wait <<","<<  total_wait_time << std::endl;
+#ifdef REPORT_LINE_INFO
+					fs <<std::dec<< id << ","<<call_contexts;
+#endif
+					fs << std::dec << "," <<  total_access_count << "," << total_fail_count << "," << conflict_rate<< "," << total_cond_wait << "," << total_trylock_fails <<"," << total_lock_wait <<","<<  total_wait_time << std::endl;
 			}
 		}	
 
