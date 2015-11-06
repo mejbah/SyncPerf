@@ -165,7 +165,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	cbuffer.bc_seq = cond->__data.__broadcast_seq;
 #ifndef ORIGINAL
 	//futex_start_timestamp(curr_meta, idx); // not the right place 
-	int wait_start_flag = 0;
+	//int wait_start_flag = 0;
 	//mejbah added end
 #endif
 	do
@@ -202,8 +202,12 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 		{
 #ifdef MY_DEBUG
             printf("In my pthread cond wait\n");
-#endif
-
+#endif			
+#ifndef ORIGINAL
+			inc_cond_wait_count(mutex_data->entry_index, tid);
+			inc_cond_wait_count(mutex_data->entry_index, tid);				
+			start_timestamp(&wait_start);
+#endif					
 			/* Wait until woken by signal or broadcast.  */
 			lll_futex_wait (&cond->__data.__futex, futex_val, pshared);
 		}
@@ -217,7 +221,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 		/* If a broadcast happened, we are done.  */
 		if (cbuffer.bc_seq != cond->__data.__broadcast_seq)
 			goto bc_out;
-#ifndef ORIGINAL
+#if 0 //ndef ORIGINAL
 		else { //mejbah added for start timestamp of condwait
 			if(wait_start_flag == 0) {
 				//add_cond_wait_count(curr_meta,idx);
@@ -269,7 +273,7 @@ bc_out:
 	  return __pthread_mutex_cond_lock (mutex);
 #else
 		int ret = __pthread_mutex_cond_lock (orig_mutex);
-		if(wait_start_flag)
+		//if(wait_start_flag)
 			add_cond_wait_time(mutex_data->entry_index, tid, &wait_start);
 #endif
 	

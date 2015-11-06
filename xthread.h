@@ -163,7 +163,6 @@ public:
 	void finalize(void) {
 		// Stop the last 
 		stopThreadLevelInfo();
-
 		std::fstream fs;
 		fs.open("threads.csv", std::fstream::out);
 		for( int i=0; i<total_threads; i++) {
@@ -173,6 +172,7 @@ public:
 			//printf("id %d runtime %lu\n",_threads[i].index, _threads[i].actualRuntime);
 		}
 		fs.close();
+#if 0
 
 		fs.open("thread_levels.csv", std::fstream::out);
 		fs << "Phase No., Thread Index begin,Thread Index end" << std::endl;
@@ -182,6 +182,7 @@ public:
 			//printf("id %d runtime %lu\n",_threads[i].index, _threads[i].actualRuntime);
 		}
 		fs.close();
+#endif
 		
 	}
 

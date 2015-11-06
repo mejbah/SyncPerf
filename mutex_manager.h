@@ -12,7 +12,7 @@ extern "C" {
 #include "finetime.h"
 
 #define MAX_CALL_STACK_DEPTH 5
-#define MAX_NUM_STACKS 256
+#define MAX_NUM_STACKS 32
 
 #ifdef GET_STATISTICS
 extern volatile unsigned long totalLocks;

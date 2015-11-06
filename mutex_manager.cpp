@@ -394,12 +394,16 @@ int back_trace(long stacks[ ], int size)
 		
 		int total_threads = xthread::getInstance().getTotalThreads();
 
+		WAIT_TIME_TYPE *thread_waits = malloc(sizeof(WAIT_TIME_TYPE)*total_threads);
+		for(int idx=0; idx<total_threads; idx++) thread_waits[idx] = 0;	
+
 		int total_sync_vars = sync_vars.getEntriesNumb();
 
 		std::cout << "Report...\n";
 		std::fstream fs;
 		fs.open("mutex-conflicts.csv", std::fstream::out);
-  	//mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
+		
+		//mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
 		fs << "mutex_id, call stacks, access_count, fail_count, lock_ratio, cond waits, trylock fails, lock wait, cond wait time"<< std::endl;
 		int id = 0; // mutex_id just for reporting
 
@@ -423,6 +427,8 @@ int back_trace(long stacks[ ], int size)
 				total_trylock_fails += per_thd_data->trylock_fail_count;
 				total_wait_time += per_thd_data->cond_futex_wait;
 				total_lock_wait += per_thd_data->futex_wait;
+			
+				thread_waits[idx] += (per_thd_data->cond_futex_wait + per_thd_data->futex_wait);
 			}
 
 			double conflict_rate;
@@ -458,7 +464,17 @@ int back_trace(long stacks[ ], int size)
 		}	
 
 		fs.close();
-	
+
+		std::fstream thd_fs;
+
+		thd_fs.open("thread_waits.csv", std::fstream::out);
+		thd_fs << "tid,wait_time" << std::endl; 
+
+		for(int idx=0; idx< total_threads; idx++){
+			thd_fs << idx << "," << thread_waits[idx] << std::endl;
+		}
+
+		thd_fs.close();	
 		std::cout << total_threads << " threads, " << id <<  " mutexes\n";
 
 
