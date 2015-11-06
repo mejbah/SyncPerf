@@ -24,7 +24,7 @@ static const struct pthread_mutexattr default_mutexattr = {
 int pthread_mutex_init (pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr)
 {
 	const struct pthread_mutexattr *imutexattr;
-  my_mutex_t * myMutex = create_mutex(mutex);
+  mutex_t * myMutex = create_mutex(mutex);
   *((void **)mutex) = myMutex;
   pthread_mutex_t * realMutex = &myMutex->mutex;; 
 

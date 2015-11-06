@@ -15,6 +15,7 @@
 #include <sysdep.h>
 #include "mutex_manager.h"
 
+
 struct _condvar_cleanup_buffer
 {
       int oldtype;
@@ -101,25 +102,26 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 #ifndef ORIGINAL
 	pthread_mutex_t *orig_mutex;
 	orig_mutex = mutex; //store for passing in the cond_lock func
-	int idx = getThreadIndex();
-  my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
-	tmp->count = tmp->count + 1; // no of times mutex accessed
-  mutex = &tmp->mutex;
-	mutex_meta_t *curr_meta = NULL;
-	struct timeinfo *wait_start;
+	int tid = getThreadIndex();
+  mutex_t *mutex_data = (mutex_t *)get_mutex(mutex);
+	
+  mutex = &mutex_data->mutex;
+	
 
-#if 1	
-	long stack[MAX_CALL_STACK_DEPTH + 1];
-	back_trace(stack, MAX_CALL_STACK_DEPTH);
-	curr_meta = get_mutex_meta(tmp, stack);	
-#else
-		unsigned int ebp;
-		asm volatile("movl %%ebp,%0\n"
-                 : "=r"(ebp));
-		curr_meta = get_call_site_mutex(tmp, ebp);
-#endif
-	//add_access_count(curr_meta, idx);
-	//add_cond_wait_count(curr_meta,idx);
+  struct timeinfo *wait_start;
+//
+//#if 1	
+//	long stack[MAX_CALL_STACK_DEPTH + 1];
+//	back_trace(stack, MAX_CALL_STACK_DEPTH);
+//	curr_meta = get_mutex_meta(tmp, stack);	
+//#else
+//		unsigned int ebp;
+//		asm volatile("movl %%ebp,%0\n"
+//                 : "=r"(ebp));
+//		curr_meta = get_call_site_mutex(tmp, ebp);
+//#endif
+//	//add_access_count(curr_meta, idx);
+//	//add_cond_wait_count(curr_meta,idx);
 #endif
 
 	//LIBC_PROBE (cond_wait, 2, cond, mutex);
@@ -218,8 +220,8 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 #ifndef ORIGINAL
 		else { //mejbah added for start timestamp of condwait
 			if(wait_start_flag == 0) {
-				add_cond_wait_count(curr_meta,idx);
-				//cond_start_timestamp(curr_meta, idx);
+				//add_cond_wait_count(curr_meta,idx);
+				inc_cond_wait_count(mutex_data->entry_index, tid);				
 				start_timestamp(&wait_start);
 				wait_start_flag = 1;
 			}
@@ -268,7 +270,7 @@ bc_out:
 #else
 		int ret = __pthread_mutex_cond_lock (orig_mutex);
 		if(wait_start_flag)
-			add_cond_wait(curr_meta, idx, &wait_start);
+			add_cond_wait_time(mutex_data->entry_index, tid, &wait_start);
 #endif
 	
 }

@@ -39,6 +39,7 @@
 
 #include "finetime.h"
 #include "libfuncs.h"
+
 //#include "log.h"
 
 /*
@@ -53,7 +54,7 @@ extern "C"
 #endif
   typedef void * threadFunction (void *);
 	#define gettid() syscall(SYS_gettid)
-  
+ 
   enum { CACHE_LINE_SIZE = 64 };
   enum { CACHE_LINE_SIZE_SHIFTS = 6 };
   enum { CACHE_LINE_SIZE_MASK = (CACHE_LINE_SIZE-1)};
@@ -104,18 +105,21 @@ extern "C"
 
     // We used this to record the stack range
     void * stackBottom;
-    void * stackTop;
+    void * stackTop;	
+
+		//unsigned int entryStart;
   } thread_t;
 
-  extern unsigned long textStart, textEnd;
+	extern unsigned long textStart, textEnd;
   extern unsigned long globalStart, globalEnd;
   extern unsigned long heapStart, heapEnd;
   // Whether current thread is inside backtrace phase
   // If yes, then we do not need to get backtrace for current malloc.
   extern __thread thread_t * current;
-  extern __thread bool isBacktrace; 
-  extern bool initialized;
-	extern bool _isMultithreading;
+  //extern __thread bool isBacktrace; 
+  //extern bool initialized;
+	//extern bool _isMultithreading;
+	
 
 	// inline char getThreadBuffer()
 	inline char * getThreadBuffer() {
@@ -135,6 +139,10 @@ extern "C"
   // Get thread index
   inline int getThreadIndex(void) {
     return current->index;
+  }
+	// Get thread stackTop
+	inline unsigned int getThreadStackTop(void) {
+    return (unsigned int)current->stackTop;
   }
 
 	// Update thread latency
@@ -207,7 +215,11 @@ public:
   enum { PAGE_SIZE_MASK = (PAGE_SIZE-1) };
 
   enum { MAX_THREADS = 2048 };//4096 };
-	
+  
+	//enum { MAX_SYNC_ENTRIES = 0x10000 };
+
+	enum { MAX_SYNC_ENTRIES = 1000000 };
+		
 	// We only support 64 heaps in total.
   enum { NUM_HEAPS = 128 };
   enum { MAX_ALIVE_THREADS = NUM_HEAPS };

@@ -1,5 +1,3 @@
-// -*- C++ -*-
-
 /*
   Author: Emery Berger, http://www.cs.umass.edu/~emery
  
@@ -34,14 +32,8 @@
 
 #include "xthread.h"
 
-// memory
-//#include "xmemory.h"
-//#include "internalheap.h"
-
-// Grace utilities
-//#include "atomic.h"
-
 #include "mutex_manager.h"
+
 
 class xrun {
 
@@ -63,12 +55,15 @@ public:
   /// @brief Initialize the system.
   void initialize()
   {
+#ifdef GET_STATISTICS
+		totalLocks = 0;
+#endif
 		installSignalHandler();
 //    InternalHeap::getInstance().initialize();
 
 		fprintf(stderr, "xrun initialize before xthread initialize\n");
 		xthread::getInstance().initialize();
-
+		
 //		fprintf(stderr, "xrun initialize before xmemory initialize\n");
     // Initialize the memory (install the memory handler)
 //    _memory.initialize();
@@ -76,17 +71,12 @@ public:
 
   void finalize (void)
   {
-		xthread::getInstance().finalize();
-
-    // If the tid was set, it means that this instance was
-    // initialized: end the transaction (at the end of main()).
-//   	_memory.finalize();
-#ifdef REPORT
-	//report_mutex_conflicts();
-	report_call_site_conflicts();
-	report_thread_waits();
+#ifdef GET_STATISTICS
+		fprintf(stderr, "total locks in this program is %ld\n", totalLocks);
 #endif
 
+		xthread::getInstance().finalize();
+		report();
   }
 #if 1
   /// @brief Install a handler for KILL signals.

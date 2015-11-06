@@ -300,7 +300,7 @@ pthread_mutex_unlock ( pthread_mutex_t *mutex )
   printf("In my mutex unlock\n"); 
 #endif
 #ifndef ORIGINAL
-  my_mutex_t *tmp =(my_mutex_t *) get_mutex(mutex);
+  mutex_t *tmp =(mutex_t *) get_mutex(mutex);
   mutex = &tmp->mutex;
 #endif
   return __pthread_mutex_unlock_usercnt (mutex, 1);

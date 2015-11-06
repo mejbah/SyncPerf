@@ -23,9 +23,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "log.hh"
+//#include "log.hh"
 #include "mm.hh"
-#include "xdefines.hh"
+#include "xdefines.h"
 //Each thread will have a class liked this. Thus, we can avoid 
 //memory allocation when we are trying to record a synchronization event.
 //The total number of entries for each thread is xdefines::MAX_SYNCEVENT_ENTRIES.
@@ -37,11 +37,13 @@ public:
 
   void initialize(int entries) {
     void* ptr;
+    size_t _size;
 
     _size = alignup(entries * sizeof(Entry), xdefines::PageSize);
     ptr = MM::mmapAllocatePrivate(_size);
     if(ptr == NULL) {
-      PRWRN("%d fail to allocate sync event pool entries : %s\n", getpid(), strerror(errno));
+     // PRWRN("%d fail to allocate sync event pool entries : %s\n", getpid(), strerror(errno));
+			printf("%d fail to allocate sync event pool entries : %s\n", getpid(), strerror(errno));
       ::abort();
     }
 
@@ -51,78 +53,51 @@ public:
     _start = (Entry*)ptr;
     _cur = 0;
     _total = entries;
-    _iter = 0;
     return;
   }
-
+#if 0
   Entry* alloc() {
     Entry* entry = NULL;
+		
 	//	PRINF("allocEntry, _cur %ld\n", _cur);
     if(_cur < _total) {
-      entry = (Entry*)&_start[_cur];
-      _cur++;
+			int val = __atomic_fetch_add(&_cur,1, __ATOMIC_RELAXED);
+			entry = (Entry*)&_start[val];
     } else {
       // There are no enough entries now; re-allocate new entries now.
-      PRWRN("Not enough entries, now _cur %lu, _total %lu at %p!!!\n", _cur, _total, &_cur);
+      printf("Not enough entries, now _cur %lu, _total %lu at %p!!!\n", _cur, _total, &_cur);
       ::abort();
     }
     return entry;
   }
+#endif
+	size_t get_next_index() {
+		int val = __atomic_fetch_add(&_cur,1, __ATOMIC_RELAXED);
+
+		if(val < _total){
+			return val;		
+		} else {
+      // There are no enough entries now; re-allocate new entries now.
+      printf("Not enough entries, now _cur %lu, _total %lu at %p!!!\n", _cur, _total, &_cur);
+      ::abort();
+    }
+  }
 
   void cleanup() {
-    _iter = 0;
+    //_iter = 0;
     _cur = 0;
   }
 
-  void prepareRollback() { _iter = 0; }
-
-  void prepareIteration() { _iter = 0; }
-
+  
   inline Entry* getEntry(size_t index) { return &_start[index]; }
-
-  Entry* nextIterEntry() {
-    _iter++;
-    if(_iter < _cur) {
-      return getEntry(_iter);
-    } else {
-      return NULL;
-    }
-  }
-
-	void advanceEntry() {
-    _iter++;
-	}
-
-  Entry* retrieveIterEntry() {
-    Entry* entry = NULL;
-    if(_iter < _cur) {
-      entry = getEntry(_iter);
-      _iter++;
-    }
-    return entry;
-  }
-
-  // No change on iteration entry.
-  Entry* getEntry() {
-    Entry* entry = NULL;
-		PRINF("getEntry: _iter %ld, _cur %ld\n", _iter, _cur);
-    if(_iter < _cur) {
-      entry = getEntry(_iter);
-    }
-    return entry;
-  }
-
-  // Only called in the replay
-  Entry* firstIterEntry() { return &_start[_iter]; }
 
   size_t getEntriesNumb() { return _cur; }
 
 private:
   Entry* _start;
   size_t _total;
-  size_t _cur;
-  size_t _size;
-  size_t _iter;
+  volatile size_t _cur;
+
 };
 
 #endif

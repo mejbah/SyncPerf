@@ -11,6 +11,7 @@
 #include <lowlevellock.h>
 
 
+
 #ifndef lll_trylock_elision
 #define lll_trylock_elision(a,t) lll_trylock(a)
 #endif
@@ -21,31 +22,37 @@
 
 int
 pthread_mutex_trylock (pthread_mutex_t *mutex) {
+
+#ifdef GET_STATISTICS
+  __atomic_add_fetch(&totalLocks, 1, __ATOMIC_RELAXED);
+#endif
 #ifndef ORIGINAL
-	int idx = getThreadIndex();
+	int tid = getThreadIndex();
   if( !is_my_mutex(mutex) )
   {
-		my_mutex_t *new_mutex = create_mutex(mutex);
+		mutex_t *new_mutex = create_mutex(mutex);
 		setSyncEntry(mutex, new_mutex);
   }
-  my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
-  tmp->count = tmp->count + 1;
-  //printf("---lock count: %u---\n", tmp->count);
-  mutex = &tmp->mutex;
-	mutex_meta_t *curr_meta = NULL;
+  mutex_t *mutex_data = (mutex_t *)get_mutex(mutex);  
+  mutex = &mutex_data->mutex;
+		
+	//mutex_meta_t *curr_meta = NULL;
+	
 
-#if 1
-	long stack[MAX_CALL_STACK_DEPTH + 1];
-	back_trace(stack, MAX_CALL_STACK_DEPTH);
-	curr_meta = get_mutex_meta(tmp, stack);
-#else
-	unsigned int ebp;
-	asm volatile("movl %%ebp,%0\n"
-                 : "=r"(ebp));
-	curr_meta = get_call_site_mutex(tmp, ebp);
-#endif
+//#if 1
+//	long stack[MAX_CALL_STACK_DEPTH + 1];
+//	back_trace(stack, MAX_CALL_STACK_DEPTH);
+//	curr_meta = get_mutex_meta(tmp, stack);
+//#else
+//	unsigned int ebp;
+//	asm volatile("movl %%ebp,%0\n"
+//                 : "=r"(ebp));
+//	curr_meta = get_call_site_mutex(tmp, ebp);
+//#endif
+
 #ifdef WITH_TRYLOCK
-	add_access_count(curr_meta, idx);
+	//add_access_count(curr_meta, idx);
+	inc_access_count(mutex_data->entry_index, tid);
 	//trylock_first_timestamp(curr_meta,idx); // get timestamp for first try only by a thread
 #endif //WITH_TRYLOCK
 #endif //ORIGINAL
@@ -55,7 +62,8 @@ pthread_mutex_trylock (pthread_mutex_t *mutex) {
 #ifdef WITH_TRYLOCK
 	if(result == EBUSY ) { //failed as  mutex is already locked
 		//printf("\n....trylock failed....\n\n");
-		inc_trylock_fail_count(curr_meta, idx);
+		//inc_trylock_fail_count(curr_meta, idx);
+		inc_trylock_fail_count(mutex_data->entry_index, tid);
 	}
   else {
 		//add_trylock_fail_time(curr_meta,idx);

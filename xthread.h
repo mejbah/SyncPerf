@@ -95,7 +95,7 @@ private:
     //current->newContext.setupStackInfo(privateTop, stackSize);
     current->stackTop = privateTop;
 		unsigned int stackTop = (unsigned long)current->stackTop;
-		printf("thread %d stack top %p  & %p\n", current->index, current->stackTop, stackTop);
+		//printf("thread %d stack top %p  & %p\n", current->index, current->stackTop, stackTop);
     //current->stackBottom = (void*)((intptr_t)privateTop - stackSize);
 
     // Now we can wakeup the parent since the parent must wait for the registe
@@ -195,6 +195,8 @@ public:
      // Allocate a global thread index for current thread.
     tindex = allocThreadIndex();
 
+		//current->entryStart = tindex * xdefines::MAX_ENTRIES_PER_THREAD;
+
 		assert(tindex == 0);
 		
 		total_threads++;
@@ -202,7 +204,7 @@ public:
     // Get corresponding thread_t structure.
     current->self  = pthread_self();
     current->tid  = gettid();
-		//setPrivateStackTop(true);
+		setPrivateStackTop(true);
   }
 
   thread_t * getThreadInfoByIndex(int index) {
@@ -274,7 +276,7 @@ public:
 		thread->accesses = 0;
 		thread->levelIndex = _threadLevel; 
 		start(&thread->startTime);
-
+			
 		// Now find one available heapid for this thread.
 		//thread->heapid = allocHeapId();
 
@@ -293,7 +295,7 @@ public:
 		else if(alivethreads == 1) {
 			// Now we are trying to create more threads
 			// Serial phase is ended now.
-			_isMultithreading = true;
+			//_isMultithreading = true;
 	
 			current->childBeginIndex = index;
 			current->childEndIndex = index;
@@ -351,6 +353,8 @@ public:
     
     children->startRoutine = fn;
     children->startArg = arg;
+	
+		//children->entryStart = tindex * xdefines::MAX_ENTRIES_PER_THREAD;
 		
 		total_threads++;
 
@@ -419,7 +423,7 @@ public:
     current->self = pthread_self();
 		current->tid = gettid();
 
-		//setPrivateStackTop(false);
+		setPrivateStackTop(false);
 
 //		fprintf(stderr, "CHILD:tid %d index %d\n", current->tid, current->index);
     // from the TLS storage.
@@ -511,29 +515,6 @@ private:
     WRAP(pthread_mutex_unlock)(&_lock); //mejbah added WRAP
   }
 
-#if 0 //mejbah
-	/// @ Allocation should be always successful.
-	int allocHeapId(void) {
-		int heapid;
-
-		while(true) {
-			if(_HeapAvailable[_heapid] == true) {
-				heapid = _heapid;
-				_HeapAvailable[_heapid] = false;
-				_heapid = (_heapid+1)%xdefines::NUM_HEAPS;
-				break;	
-			}
-			_heapid = (_heapid+1)%xdefines::NUM_HEAPS;
-		}
-	
-		return heapid;
-	}
-
-	// Set the heap to be available if the thread is exiting.
-	void releaseHeap(int heapid) {
-		_HeapAvailable[heapid] = true;
-	}
-#endif
 	// Now we will mark the exit of a thread 
   void markThreadExit(thread_t * thread) {
   // fprintf(stderr, "remove thread %p with thread index %d\n", thread, thread->index);
@@ -542,7 +523,7 @@ private:
     --_aliveThreads;
 
 		if(_aliveThreads == 1) {
-			_isMultithreading = false;
+			//_isMultithreading = false;
 			
 			// Now we have to update latency information for the current level
     	if(_predPerfImprovement) {
@@ -575,7 +556,6 @@ private:
 	// We are adding a total latency here.
 	bool  _predPerfImprovement;
 
-	//bool     _HeapAvailable[xdefines::NUM_HEAPS];
   // Total threads we can support is MAX_THREADS
   thread_t  _threads[xdefines::MAX_THREADS];
 

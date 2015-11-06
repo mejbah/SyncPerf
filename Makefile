@@ -1,7 +1,7 @@
 #OBJS = nptl-init.o 
 CC = gcc
 #CFLAGS= -I. -D_GNU_SOURCE -fPIC -DORIGINAL -DMY_DEBUG
-CFLAGS= -g -O2 -fno-omit-frame-pointer -I. -D_GNU_SOURCE -fPIC -DREPORT -DWITH_TRYLOCK
+CFLAGS= -g -O2 -fno-omit-frame-pointer -I. -D_GNU_SOURCE -fPIC -DWITH_TRYLOCK -DGET_STATISTICS
 LD = $(CC)
 LDFLAGS = -lpthread -ldl  -shared -lstdc++
 
@@ -26,9 +26,8 @@ $(TARGET) : $(OBJS) $(OBJECTS_AS) $(CPP_OBJS)
 %.o : %.S
 	$(CC) $(CFLAGS) -c $<
 CSCOPE:
-	`find -name '*.c' -o -name '*.cpp' -o -name '*.h' > cscope.files`
-	`cscope -b` 
-	# -q -k`
+	`find -name '*.c' -o -name '*.cpp' -o -name '*.h' -name '*.hh'> cscope.files`
+	`cscope -b -q -k`
 
 clean:
 	rm -f liblockperf.so *.o

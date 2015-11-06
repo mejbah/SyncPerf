@@ -41,50 +41,61 @@
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
-//#ifdef __cplusplus
-//extern "C" {
-//#endif
 
+#ifdef GET_STATISTICS
+volatile unsigned long totalLocks;
+#endif
 
 int
 pthread_mutex_lock (pthread_mutex_t *mutex)
 {
-    //printf("In my pthread mutex lock\n");
-
-	mutex_meta_t *curr_meta = NULL;
+#ifndef NO_INCR
+#ifdef GET_STATISTICS
+	__atomic_fetch_add(&totalLocks, 1, __ATOMIC_RELAXED);
+#endif
+#endif
 	struct timeinfo wait_start;
 
 #ifndef ORIGINAL
-		int idx = getThreadIndex();
+	int tid = getThreadIndex();
 
-#ifndef NO_INCR // when called for cond_lock
-    if( !is_my_mutex(mutex) ) 
-    {
-        my_mutex_t *new_mutex = create_mutex(mutex);
-        setSyncEntry(mutex, new_mutex);
-    }
+#ifndef NO_INCR // when not called for cond_lock
+	if( !is_my_mutex(mutex) ) 
+  {
+		mutex_t *new_mutex = create_mutex(mutex);
+    setSyncEntry(mutex, new_mutex);
+	}
+	
 #endif
-    my_mutex_t *tmp = (my_mutex_t *)get_mutex(mutex);
-    tmp->count = tmp->count + 1; // no of times mutex accessed
-    //printf("---lock count: %u---\n", tmp->count);
-    mutex = &tmp->mutex;
-		//mutex_meta_t *curr_meta = NULL;
+		
+	mutex_t *mutex_data = (mutex_t *)get_mutex(mutex);
+	mutex = &mutex_data->mutex;
+		
 #ifndef NO_INCR // if not in cond_wait
-		long stack[MAX_CALL_STACK_DEPTH+1];
-#if 1
-	  back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
-		curr_meta = get_mutex_meta(tmp, stack); // TODO: do only for futex wait
-#else
-		unsigned int ebp;
-		asm volatile("movl %%ebp,%0\n"
+//#if 1
+//
+//		long stack[MAX_CALL_STACK_DEPTH+1];
+//	  back_trace(stack, MAX_CALL_STACK_DEPTH); //TODO: backtrace only when futex wait
+//		curr_meta = get_mutex_meta(tmp, stack); // TODO: do only for futex wait
+//#else
+//		unsigned int ebp;
+//		asm volatile("movl %%ebp,%0\n"
+//                 : "=r"(ebp));
+//		curr_meta = get_call_site_mutex(tmp, ebp);
+//#endif
+
+	inc_access_count(mutex_data->entry_index, tid);
+	unsigned int ebp;
+	asm volatile("movl %%ebp,%0\n"
                  : "=r"(ebp));
-		curr_meta = get_call_site_mutex(tmp, ebp);
-#endif
-		add_access_count(curr_meta, idx);
+	unsigned int ebp_offset =  getThreadStackTop() - ebp;
+	assert(ebp_offset > 0);
+	add_new_context(mutex_data,  (long)__builtin_return_address(0), ebp_offset);
+	
 #endif
 
 #endif	
-    assert (sizeof (mutex->__size) >= sizeof (mutex->__data));
+  assert (sizeof (mutex->__size) >= sizeof (mutex->__data));
 
     
 	int oldval;
@@ -137,19 +148,9 @@ simple:
 #ifndef ORIGINAL		
 		
 		if(mutex->__data.__lock == 2) { 
-			futex_flag=1; 
-			
-
-#if MY_DEBUG
-			int top = -1;
-			printf("call stack \n");
-			while(stack[top++] != 0 && top < MAX_CALL_STACK_DEPTH)
-				printf("%#lx\n", stack[top]);	
-			printf("end of stack \n");
-#endif
-			//futex_start_timestamp(curr_meta, idx);			
-			inc_fail_count(curr_meta, idx);
+			futex_flag=1; 			
 			start_timestamp(&wait_start);
+			inc_fail_count(mutex_data->entry_index,tid);
 		}
 #endif
 #endif
@@ -159,7 +160,7 @@ simple:
 #ifndef NO_INCR
 		if(futex_flag) {
 			 
-			add_futex_wait(curr_meta, idx, &wait_start);
+			add_futex_wait(mutex_data->entry_index, tid, &wait_start);
 			futex_flag=0;
 		}
 #endif
@@ -174,21 +175,23 @@ simple:
 		{
 #ifndef NO_INCR
 			//futex_start_timestamp(curr_meta, idx);
-			start_timestamp(&wait_start);
+			//start_timestamp(&wait_start);
 #endif
 			int cnt = 0;
 			int max_cnt = MIN (MAX_ADAPTIVE_COUNT,
 				mutex->__data.__spins * 2 + 10);
 			do
 			{
-				inc_fail_count(curr_meta, idx);
+#ifndef NO_INCR
+				inc_fail_count(mutex_data->entry_index, tid);	
+#endif
 				if (cnt++ >= max_cnt)
 				{
 					// LLL_MUTEX_LOCK (mutex->__data.__lock);//mejbah edited
 					//TODO: not calculting the spin waiting time/TRYLOCK fail
 					LLL_MUTEX_LOCK (mutex);
 #ifndef NO_INCR
-					add_futex_wait(curr_meta, idx, &wait_start);
+					//add_futex_wait(curr_meta, idx, &wait_start);
 #endif
 					break;
 				}
