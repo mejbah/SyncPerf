@@ -218,6 +218,7 @@ public:
   
 	//enum { MAX_SYNC_ENTRIES = 0x10000 };
 
+	//                 e5ccc = 941260
 	enum { MAX_SYNC_ENTRIES = 1000000 };
 		
 	// We only support 64 heaps in total.

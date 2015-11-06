@@ -61,7 +61,7 @@ public:
 		installSignalHandler();
 //    InternalHeap::getInstance().initialize();
 
-		fprintf(stderr, "xrun initialize before xthread initialize\n");
+		fprintf(stderr, "xrun initialize before xthread initialize. mutex size %ld. mytex_t %ld\n", sizeof(pthread_mutex_t), sizeof(mutex_t));
 		xthread::getInstance().initialize();
 		
 //		fprintf(stderr, "xrun initialize before xmemory initialize\n");
