@@ -12,7 +12,7 @@ extern "C" {
 #include "finetime.h"
 
 #define MAX_CALL_STACK_DEPTH 5
-#define MAX_NUM_STACKS 256
+#define MAX_NUM_STACKS 8
 
 #ifdef GET_STATISTICS
 extern volatile unsigned long totalLocks;
@@ -23,20 +23,15 @@ typedef unsigned int UINT32;
 
 
 typedef struct {
-	
 	pthread_mutex_t mutex;
 
 	// Keep the address of nominal mutex;
 	pthread_mutex_t * nominalmutex;
 
 	size_t entry_index; // mutex entry per thread index 
-
 	int stack_count; // how many different call sites
-	long stacks[MAX_NUM_STACKS][MAX_CALL_STACK_DEPTH+1];
-
-	unsigned int ebp_offset[MAX_NUM_STACKS];
-	long ret_address[MAX_NUM_STACKS];
-	
+	size_t ebp_offset[MAX_NUM_STACKS];
+	size_t stacks[MAX_NUM_STACKS][MAX_CALL_STACK_DEPTH+1];
 }mutex_t;
 
 
