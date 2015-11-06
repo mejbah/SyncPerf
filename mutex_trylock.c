@@ -22,9 +22,8 @@
 
 int
 pthread_mutex_trylock (pthread_mutex_t *mutex) {
-
 #ifdef GET_STATISTICS
-  __atomic_add_fetch(&totalLocks, 1, __ATOMIC_RELAXED);
+  __atomic_fetch_add(&totalLocks, 1, __ATOMIC_RELAXED);
 #endif
 #ifndef ORIGINAL
 	int tid = getThreadIndex();
