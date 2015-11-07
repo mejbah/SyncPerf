@@ -13,6 +13,7 @@
 #include "xdefines.h"
 #include "xthread.h"
 #include <unistd.h>
+#include <map>
 
 
 #define MAXBUFSIZE 4096
@@ -374,8 +375,20 @@ int back_trace(long stacks[ ], int size)
     return stack_str;
   }
 
+#ifdef CONTEXT_SORT
+	typedef struct {
+		size_t addr; // last call
+		unsigned int access_count;
+		unsigned int fail_count;	
+	}context_data_t;
+#endif
+
 
 	void report() {
+
+#ifdef CONTEXT_SORT
+		std::map<size_t, context_data_t* > context_map; //map all mutex id to context
+#endif
 		
 		int total_threads = xthread::getInstance().getMaxThreadIndex();
 
@@ -396,6 +409,7 @@ int back_trace(long stacks[ ], int size)
 		for(int i=0; i<total_sync_vars; i++) {
 			mutex_t *m = sync_vars.getEntry(i);
 			assert(m->entry_index == i);
+			
 			unsigned int total_access_count = 0;
 			unsigned int total_fail_count = 0;
 			unsigned int total_cond_wait = 0;
@@ -418,33 +432,50 @@ int back_trace(long stacks[ ], int size)
 
 			double conflict_rate;
 			if( total_access_count > 0 ) { //TODO: access_count = 0 is poosible as fix setSyncEntry ignores new mutex ,index already increased in recordentries
-					id++;
+				id++;
 					//print call stacks
 #ifndef REPORT_LINE_INFO
-					fs << std::dec << id << ",";
+				fs << std::dec << id << ",";
 #endif
-					std::string call_contexts = "";
-					for(int con=0; con<m->stack_count; con++){
-						call_contexts += " ::";
+				std::string call_contexts = "";
+				for(int con=0; con<m->stack_count; con++){
+					call_contexts += " ::";
 #ifdef REPORT_LINE_INFO
-						call_contexts += get_call_stack_string(m->stacks[con]);		
+					call_contexts += get_call_stack_string(m->stacks[con]);		
 #else
-						int depth = 0;
-						fs << " ::";
-						while(m->stacks[con][depth]){
-								fs << std::hex << " 0x" << m->stacks[con][depth];
-								depth++; 
-						}									
+					int depth = 0;
+					fs << " ::";
+					while(m->stacks[con][depth]){
+							fs << std::hex << " 0x" << m->stacks[con][depth];
+							depth++; 
+					}									
 #endif 
+
+#ifdef CONTEXT_SORT
+					std::map<size_t, context_data_t*>::iterator it;			
+					it = context_map.find(m->ebp_offset[con]);
+					if( it != context_map.end()){ // already threre
+						it->second->access_count += total_access_count;
+						it->second->fail_count += total_fail_count;
+						break;
 					}
+					else {// new data insert
+						context_data_t *new_data = malloc(sizeof(context_data_t));
+						new_data->addr = m->stacks[con][0]; // store the stack top
+						new_data->access_count = total_access_count;
+						new_data->fail_count =  total_fail_count;
+						context_map.insert(std::pair<size_t, context_data_t*>(m->ebp_offset[con], new_data));
+					}
+#endif
+				}
 
 		
-					double conflict_rate = total_fail_count/double(total_access_count);
-					//if(conflict_rate > 0 )
+				double conflict_rate = total_fail_count/double(total_access_count);
+				//if(conflict_rate > 0 )
 #ifdef REPORT_LINE_INFO
-					fs <<std::dec<< id << ","<<call_contexts;
+				fs <<std::dec<< id << ","<<call_contexts;
 #endif
-					fs << std::dec << "," <<  total_access_count << "," << total_fail_count << "," << conflict_rate<< "," << total_cond_wait << "," << total_trylock_fails <<"," << total_lock_wait <<","<<  total_wait_time << std::endl;
+				fs << std::dec << "," <<  total_access_count << "," << total_fail_count << "," << conflict_rate<< "," << total_cond_wait << "," << total_trylock_fails <<"," << total_lock_wait <<","<<  total_wait_time << std::endl;
 			}
 		}	
 
@@ -462,6 +493,52 @@ int back_trace(long stacks[ ], int size)
 
 		thd_fs.close();	
 		std::cout << total_threads << " threads, " << id <<  " mutexes\n";
+
+#ifdef CONTEXT_SORT
+		//print context map
+		std::map<size_t, context_data_t*>::iterator p_it;
+		std::fstream con_fs;
+		
+		con_fs.open("context.csv", std::fstream::out);
+
+		con_fs << "context, count, fails" << std::endl;
+
+		for(p_it=context_map.begin(); p_it!=context_map.end(); p_it++){
+			std::string stack_str="";
+			char _curFilename[MAXBUFSIZE];
+			char buf[MAXBUFSIZE];
+
+			int count = readlink("/proc/self/exe", _curFilename, MAXBUFSIZE);
+			if (count <= 0 || count >= MAXBUFSIZE)
+			{
+				fprintf(stderr, "Failed to get current executable file name\n" );
+				exit(1);
+			}
+			_curFilename[count] = '\0';
+
+				
+			sprintf(buf, "addr2line -e %s  -a 0x%zx  | tail -1", _curFilename, p_it->second->addr );
+
+      std::string source_line =  exec(buf);
+			//std::cout << source_line << std::endl;
+      //ss << source_line.erase(source_line.size()-1); // remove the newline at the end 
+
+      //stack_str += ss.str();    
+      //ss.str("");
+      if(source_line[0] != '?') { // not found
+        //get the file name only
+        std::size_t found = source_line.find_last_of("/\\");
+        source_line = source_line.substr(found+1);
+        stack_str += source_line.erase(source_line.size()-1); // remove the newline at the end
+        stack_str += " ";
+      }
+
+			con_fs << stack_str << ", " << p_it->second->access_count << ", " << p_it->second->fail_count << std::endl; 	
+		}
+
+		con_fs.close();	
+
+#endif
 
 
 	}

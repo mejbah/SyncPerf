@@ -132,7 +132,7 @@ public:
     _heapid = 0;
 		_predPerfImprovement = true;
 		_origThreadId = gettid();
-		total_threads = 0;
+		//total_threads = 0;
 
 		// Acquire the number of CPUs.
 		_numCPUs= sysconf(_SC_NPROCESSORS_ONLN);
@@ -162,28 +162,7 @@ public:
 	// The end of system. 
 	void finalize(void) {
 		// Stop the last 
-		stopThreadLevelInfo();
-		std::fstream fs;
-		fs.open("threads.csv", std::fstream::out);
-		for( int i=0; i<total_threads; i++) {
-			//if(i>0 && _threads[i].index == 0) break; //empty array fields	
-			fs << _threads[i].index << "," << std::hex <<(void*)( _threads[i].startRoutine)<< std::dec<< "," <<  _threads[i].actualRuntime << std::endl;
-		
-			//printf("id %d runtime %lu\n",_threads[i].index, _threads[i].actualRuntime);
-		}
-		fs.close();
-#if 0
-
-		fs.open("thread_levels.csv", std::fstream::out);
-		fs << "Phase No., Thread Index begin,Thread Index end" << std::endl;
-		for( int i=0; i<= getTotalThreadLevels(); i++) {
-			threadLevelInfo *info = getThreadLevelByIndex(i);
-			fs << i << "," << info->beginIndex << "," <<  info->endIndex  << std::endl;
-			//printf("id %d runtime %lu\n",_threads[i].index, _threads[i].actualRuntime);
-		}
-		fs.close();
-#endif
-		
+		stopThreadLevelInfo();		
 	}
 
   // Initialize the first threadd
@@ -200,7 +179,7 @@ public:
 
 		assert(tindex == 0);
 		
-		total_threads++;
+		//total_threads++;
 
     // Get corresponding thread_t structure.
     current->self  = pthread_self();
@@ -357,7 +336,7 @@ public:
 	
 		//children->entryStart = tindex * xdefines::MAX_ENTRIES_PER_THREAD;
 		
-		total_threads++;
+		//total_threads++;
 
     result =  WRAP(pthread_create)(tid, attr, startThread, (void *)children);
 		
@@ -501,7 +480,7 @@ public:
 
 	}
 
-	inline int getTotalThreads() { return total_threads; }
+	//inline int getTotalThreads() { return total_threads; }
 
 
 
@@ -553,7 +532,7 @@ private:
 	pid_t _origThreadId;
 	int _heapid;	
 
-	int total_threads;
+	//int total_threads;
 	// We are adding a total latency here.
 	bool  _predPerfImprovement;
 
