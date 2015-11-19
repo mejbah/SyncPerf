@@ -31,7 +31,7 @@ double cpu_freq = 1599000; //KHz
 
 void __get_time(struct timeinfo * ti)
 {
-	unsigned int tlow, thigh;
+	unsigned long tlow, thigh;
 
 	asm volatile ("rdtsc"
 		  : "=a"(tlow),
@@ -45,9 +45,13 @@ double __count_elapse(struct timeinfo * start, struct timeinfo * stop)
 {
 	double elapsed = 0.0;
 
-	elapsed = (double)(stop->low) + (double)(UINT_MAX)*(double)(stop->high - start->high) - (double)start->low;
+	if(stop->high < start->high) {
+		elapsed = (double)(stop->low) + (double)(ULONG_MAX)*(double)(stop->high + ULONG_MAX - start->high) - (double)start->low;
+	}
+	else  
+	elapsed = (double)(stop->low) + (double)(ULONG_MAX)*(double)(stop->high - start->high) - (double)start->low;
 	//if (stop->low < start->low)
-	//	elapsed -= (double)UINT_MAX;
+	//	elapsed -= (double)ULONG_MAX;
 
 	//printf("STOP: low %ld hight %ld START: low %ld high %ld\n", stop->low, stop->high, start->low, start->high);
 	
