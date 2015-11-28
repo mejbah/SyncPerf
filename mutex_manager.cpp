@@ -166,7 +166,7 @@ void inc_fail_count(size_t mut_index, int thd_idx)
 
 void inc_cond_wait_count(size_t mut_index, int thd_idx)
 {
-	get_thread_mutex_data(mut_index,thd_idx)->cond_waits;
+	get_thread_mutex_data(mut_index,thd_idx)->cond_waits++;
 }
 
 void start_timestamp( struct timeinfo *st ) 
