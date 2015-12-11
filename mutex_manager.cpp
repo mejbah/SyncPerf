@@ -402,7 +402,7 @@ int back_trace(long stacks[ ], int size)
 		fs.open("mutex-conflicts.csv", std::fstream::out);
 		
 		//mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
-		fs << "mutex_id, call stacks, access_count, fail_count, lock_ratio, cond waits, trylock fails, lock wait, cond wait time"<< std::endl;
+		fs << "mutex_id, access_count, fail_count, lock_ratio, trylock fails, contexts"<< std::endl;
 		int id = 0; // mutex_id just for reporting
 
 		
@@ -433,20 +433,21 @@ int back_trace(long stacks[ ], int size)
 			double conflict_rate;
 			if( total_access_count > 0 ) { //TODO: access_count = 0 is poosible as fix setSyncEntry ignores new mutex ,index already increased in recordentries
 				id++;
-					//print call stacks
-#ifndef REPORT_LINE_INFO
-				fs << std::dec << id << ",";
-#endif
+				//print call stacks
 				std::string call_contexts = "";
 				for(int con=0; con<m->stack_count; con++){
-					call_contexts += " ::";
+					call_contexts += " #";
+					std::stringstream ss;
+					ss << (con + 1) << " ";
+					call_contexts += ss.str();
 #ifdef REPORT_LINE_INFO
 					call_contexts += get_call_stack_string(m->stacks[con]);		
 #else
 					int depth = 0;
-					fs << " ::";
-					while(m->stacks[con][depth]){
-							fs << std::hex << " 0x" << m->stacks[con][depth];
+					while(m->stacks[con][depth]){	
+							call_contexts += "0x"
+							call_contexts += m->stacks[con][depth];
+							call_contexts += ","
 							depth++; 
 					}									
 #endif 
@@ -455,6 +456,7 @@ int back_trace(long stacks[ ], int size)
 					std::map<size_t, context_data_t*>::iterator it;			
 					it = context_map.find(m->ebp_offset[con]);
 					if( it != context_map.end()){ // already threre
+						assert(it->second->access_count == m->stacks[con][0]);
 						it->second->access_count += total_access_count;
 						it->second->fail_count += total_fail_count;
 						break;
@@ -470,12 +472,9 @@ int back_trace(long stacks[ ], int size)
 				}
 
 		
-				double conflict_rate = total_fail_count/double(total_access_count);
-				//if(conflict_rate > 0 )
-#ifdef REPORT_LINE_INFO
-				fs <<std::dec<< id << ","<<call_contexts;
-#endif
-				fs << std::dec << "," <<  total_access_count << "," << total_fail_count << "," << conflict_rate<< "," << total_cond_wait << "," << total_trylock_fails <<"," << total_lock_wait <<","<<  total_wait_time << std::endl;
+				double conflict_rate = (100*total_fail_count)/double(total_access_count);
+				fs << std::dec << id << ": " <<  total_access_count << "," << total_fail_count << "," << conflict_rate<< "," << total_trylock_fails <<"," << call_contexts << std::endl;
+//				fs << std::dec << id << ": " <<  total_access_count << "," << total_fail_count << "," << conflict_rate<< "," << total_cond_wait << "," << total_trylock_fails <<"," << total_lock_wait <<","<<  total_wait_time << "," << call_contexts << std::endl;
 			}
 		}	
 
@@ -539,7 +538,6 @@ int back_trace(long stacks[ ], int size)
 		con_fs.close();	
 
 #endif
-
 
 	}
 
