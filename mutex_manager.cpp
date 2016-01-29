@@ -445,9 +445,9 @@ int back_trace(long stacks[ ], int size)
 #else
 					int depth = 0;
 					while(m->stacks[con][depth]){	
-							call_contexts += "0x"
+							call_contexts += "0x";
 							call_contexts += m->stacks[con][depth];
-							call_contexts += ","
+							call_contexts += ",";
 							depth++; 
 					}									
 #endif 
