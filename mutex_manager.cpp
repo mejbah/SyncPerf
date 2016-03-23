@@ -128,10 +128,12 @@ int comp_stack( long s1[], long s2[] ){
 }
 #endif
 
-int add_new_context( mutex_t *mutex, long ret_address, unsigned int ebp_offset ) {
+int add_new_context( mutex_t *mutex, long ret_address, unsigned int esp_offset ) {
 	for( int i=0; i< mutex->stack_count; i++ ){
-    if(mutex->ebp_offset[i] == ebp_offset) {
-			return 0;
+    if(mutex->eip[i] == ret_address) {
+    	if(mutex->esp_offset[i] == esp_offset) {
+				return 0;
+			}
 		}
   }
 
@@ -139,7 +141,8 @@ int add_new_context( mutex_t *mutex, long ret_address, unsigned int ebp_offset )
 	
   // increment stack count atomically
   do_backtrace(mutex->stacks[mutex->stack_count], MAX_CALL_STACK_DEPTH);
-  mutex->ebp_offset[mutex->stack_count] = ebp_offset;
+	mutex->eip[mutex->stack_count] = ret_address;
+  mutex->esp_offset[mutex->stack_count] = esp_offset;
 	mutex->stack_count++;
   return 0;
 }
@@ -404,8 +407,7 @@ int back_trace(long stacks[ ], int size)
 		//mutex_id, call stacks, futex_wait, cond_wait, trylock_wait, trylock fail count
 		fs << "mutex_id, access_count, fail_count, lock_ratio, trylock fails, contexts"<< std::endl;
 		int id = 0; // mutex_id just for reporting
-
-		
+	
 		for(int i=0; i<total_sync_vars; i++) {
 			mutex_t *m = sync_vars.getEntry(i);
 			assert(m->entry_index == i);
@@ -454,7 +456,7 @@ int back_trace(long stacks[ ], int size)
 
 #ifdef CONTEXT_SORT
 					std::map<size_t, context_data_t*>::iterator it;			
-					it = context_map.find(m->ebp_offset[con]);
+					it = context_map.find(m->esp_offset[con]);
 					if( it != context_map.end()){ // already threre
 						assert(it->second->access_count == m->stacks[con][0]);
 						it->second->access_count += total_access_count;
@@ -466,14 +468,15 @@ int back_trace(long stacks[ ], int size)
 						new_data->addr = m->stacks[con][0]; // store the stack top
 						new_data->access_count = total_access_count;
 						new_data->fail_count =  total_fail_count;
-						context_map.insert(std::pair<size_t, context_data_t*>(m->ebp_offset[con], new_data));
+						context_map.insert(std::pair<size_t, context_data_t*>(m->esp_offset[con], new_data));
 					}
 #endif
 				}
 
 		
 				double conflict_rate = (100*total_fail_count)/double(total_access_count);
-				fs << std::dec << id << ": " <<  total_access_count << "," << total_fail_count << "," << conflict_rate<< "," << total_trylock_fails <<"," << call_contexts << std::endl;
+//				fs << std::dec << id << ": " <<  total_access_count << "," << total_fail_count << "," << conflict_rate<< "," << total_trylock_fails <<"," << call_contexts << std::endl;
+				fs << std::dec << id << ": " <<  total_access_count << "," << total_fail_count << "," << conflict_rate<< "," << total_trylock_fails <<","<< m->stack_count  << std::endl;
 //				fs << std::dec << id << ": " <<  total_access_count << "," << total_fail_count << "," << conflict_rate<< "," << total_cond_wait << "," << total_trylock_fails <<"," << total_lock_wait <<","<<  total_wait_time << "," << call_contexts << std::endl;
 			}
 		}	

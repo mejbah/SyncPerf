@@ -85,12 +85,12 @@ pthread_mutex_lock (pthread_mutex_t *mutex)
 //#endif
 
 	inc_access_count(mutex_data->entry_index, tid);
-	unsigned int ebp;
-	asm volatile("movl %%ebp,%0\n"
-                 : "=r"(ebp));
-	unsigned int ebp_offset =  getThreadStackTop() - ebp;
-	assert(ebp_offset > 0);
-	add_new_context(mutex_data,  (long)__builtin_return_address(0), ebp_offset);
+	unsigned int esp;
+	asm volatile("movl %%esp,%0\n"
+                 : "=r"(esp));
+	unsigned int esp_offset =  getThreadStackTop() - esp;
+	assert(esp_offset > 0);
+	add_new_context(mutex_data,  (long)__builtin_return_address(0), esp_offset);
 	
 #endif
 

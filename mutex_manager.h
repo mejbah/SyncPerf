@@ -12,7 +12,7 @@ extern "C" {
 #include "finetime.h"
 
 #define MAX_CALL_STACK_DEPTH 5
-#define MAX_NUM_STACKS 8
+#define MAX_NUM_STACKS 10
 
 #ifdef GET_STATISTICS
 extern volatile unsigned long totalLocks;
@@ -30,7 +30,8 @@ typedef struct {
 
 	size_t entry_index; // mutex entry per thread index 
 	int stack_count; // how many different call sites
-	size_t ebp_offset[MAX_NUM_STACKS];
+	size_t esp_offset[MAX_NUM_STACKS];
+	size_t eip[MAX_NUM_STACKS];
 	size_t stacks[MAX_NUM_STACKS][MAX_CALL_STACK_DEPTH+1];
 }mutex_t;
 
@@ -70,7 +71,7 @@ void inc_trylock_fail_count(size_t mut_index, int thd_idx);
 // return 1 if new mutex 
 int setSyncEntry( void* syncvar, void* realvar);
 
-int add_new_context( mutex_t *mutex, long ret_address, unsigned int ebp_offset ) ;
+int add_new_context( mutex_t *mutex, long ret_address, unsigned int esp_offset ) ;
 
 
 void report();

@@ -52,12 +52,12 @@ pthread_mutex_trylock (pthread_mutex_t *mutex) {
 #ifdef WITH_TRYLOCK
 	//add_access_count(curr_meta, idx);
 	inc_access_count(mutex_data->entry_index, tid);
-	unsigned int ebp;
-  asm volatile("movl %%ebp,%0\n"
-                 : "=r"(ebp));
-  unsigned int ebp_offset =  getThreadStackTop() - ebp;
-  assert(ebp_offset > 0);
-  add_new_context(mutex_data,  (long)__builtin_return_address(0), ebp_offset);
+	unsigned int esp;
+  asm volatile("movl %%esp,%0\n"
+                 : "=r"(esp));
+  unsigned int esp_offset =  getThreadStackTop() - esp;
+  assert(esp_offset > 0);
+  add_new_context(mutex_data,  (long)__builtin_return_address(0), esp_offset);
 	//trylock_first_timestamp(curr_meta,idx); // get timestamp for first try only by a thread
 #endif //WITH_TRYLOCK
 #endif //ORIGINAL
