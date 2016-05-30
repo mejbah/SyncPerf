@@ -1,7 +1,7 @@
 
--- for PTHREAD_MUTEX_INITIALIZER 
-    : in my_mutex.c : is_my_mutex() check and new mutex create and update has to be atomic
+1. Fix Report Summary for four quadrant - DONE
 
--- fix trylock.c
+2. Thread Phase Information
 
--- fluidanimate test do not pass: fix this
+3. Add per context report
+

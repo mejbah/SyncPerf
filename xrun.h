@@ -35,6 +35,7 @@
 #include "mutex_manager.h"
 
 
+
 class xrun {
 
 private:
@@ -59,13 +60,11 @@ public:
 		totalLocks = 0;
 #endif
 		installSignalHandler();
-//    InternalHeap::getInstance().initialize();
 
 		fprintf(stderr, "xrun initialize before xthread initialize. mutex size %ld. mytex_t %ld\n", sizeof(pthread_mutex_t), sizeof(mutex_t));
 		xthread::getInstance().initialize();
 		
 //		fprintf(stderr, "xrun initialize before xmemory initialize\n");
-    // Initialize the memory (install the memory handler)
 //    _memory.initialize();
   }
 
@@ -76,7 +75,7 @@ public:
 #endif
 
 		xthread::getInstance().finalize();
-		report();
+		//report();
   }
 #if 1
   /// @brief Install a handler for KILL signals.

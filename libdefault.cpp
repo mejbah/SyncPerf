@@ -6,6 +6,7 @@
 #include "xrun.h"
 #include "mutex_manager.h"
 #include "recordentries.hh"
+#include "report.h"
 
 
 extern "C" {
@@ -15,6 +16,7 @@ extern "C" {
 
 	
   __thread thread_t * current = NULL;	
+  bool _isMultithreading = false;
 
 	RecordEntries<mutex_t>sync_vars;
 	
@@ -40,6 +42,7 @@ extern "C" {
   void finalizer (void) {
     initialized = false;
     xrun::getInstance().finalize();
+		Report::getInstance().print(sync_vars);
   }
 
 

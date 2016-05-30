@@ -12,7 +12,7 @@ extern "C" {
 #include "finetime.h"
 
 #define MAX_CALL_STACK_DEPTH 5
-#define MAX_NUM_STACKS 10
+#define MAX_NUM_STACKS 30
 
 #ifdef GET_STATISTICS
 extern volatile unsigned long totalLocks;
@@ -74,7 +74,8 @@ int setSyncEntry( void* syncvar, void* realvar);
 int add_new_context( mutex_t *mutex, long ret_address, unsigned int esp_offset ) ;
 
 
-void report();
+thread_mutex_t* get_thread_mutex_data( size_t mut_index, int thd_index );
+//void report();
 
 
 /* Define the stack_frame layout */

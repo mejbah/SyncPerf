@@ -22,7 +22,7 @@ Second, try to maintain a thread local variable to save some thread local inform
 /*
  * @file   xthread.h
  * @brief  Managing the thread creation, etc.
- * @author Tongping Liu <http://www.cs.umass.edu/~tonyliu>
+ * @author Tongping Liu <http://www.cs.umass.edu/~tonyliu>, Mejbah ul Alam<mohammad.alam@utsa.edu>
  */
 
 #ifndef _XTHREAD_H_
@@ -35,15 +35,12 @@ Second, try to maintain a thread local variable to save some thread local inform
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h> //mejbah
-#include <assert.h> //mejbah
+#include <string.h> 
+#include <assert.h> 
 #include <fstream>
 #include <iostream>
 #include "xdefines.h"
 #include "finetime.h"
-#ifdef USING_IBS
-#include "IBS/ibs.h"
-#endif
 
 extern "C" {
 	struct threadLevelInfo {
@@ -124,38 +121,23 @@ public:
     return *theOneTrueObject;
   }
 
-  /// @brief Initialize the system.
+  // @brief Initialize the system.
   void initialize()
   {
     _aliveThreads = 0;
 		_threadIndex = 0;
-    _heapid = 0;
-		_predPerfImprovement = true;
 		_origThreadId = gettid();
-		//total_threads = 0;
 
-		// Acquire the number of CPUs.
-		_numCPUs= sysconf(_SC_NPROCESSORS_ONLN);
-		if(_numCPUs < 0) {
-			fprintf(stderr, "Can't get the CPU's number\n");
-			abort();
-		}
+		//init lock with original init function
+    WRAP(pthread_mutex_init)(&_lock, NULL); 
 
-		// How we can get the information in the beginning.
-    WRAP(pthread_mutex_init)(&_lock, NULL); //mejbah added WRAP
-
-    // Shared the threads information. 
+    //all thread structures in array initialize with zero 
     memset(&_threads, 0, sizeof(_threads));
-
-		// Set all entries to be available initially 
-    //for(int i = 0; i < xdefines::NUM_HEAPS; i++) {
-		//	_HeapAvailable[i] = true;
-    //}
 
 		// Set this thread level information to 0.
 		memset(&_threadLevelInfo, 0, sizeof(struct threadLevelInfo)*xdefines::MAX_THREAD_LEVELS);
 
-    // Allocate the threadindex for current thread.
+    // Allocate the threadindex for current thread
     initInitialThread();
   }
 
@@ -165,12 +147,10 @@ public:
 		stopThreadLevelInfo();		
 	}
 
-  // Initialize the first threadd
+  // Initialize the first thread
   void initInitialThread(void) {
     int tindex;
 
-		// We know that we will going to execute     
-    current = getThreadInfoByIndex(0);
 
      // Allocate a global thread index for current thread.
     tindex = allocThreadIndex();
@@ -178,8 +158,8 @@ public:
 		//current->entryStart = tindex * xdefines::MAX_ENTRIES_PER_THREAD;
 
 		assert(tindex == 0);
-		
-		//total_threads++;
+				
+    current = getThreadInfoByIndex(tindex);
 
     // Get corresponding thread_t structure.
     current->self  = pthread_self();
@@ -189,7 +169,6 @@ public:
 
   thread_t * getThreadInfoByIndex(int index) {
 		assert(index < xdefines::MAX_THREADS);
-
     return &_threads[index];
   }
 
@@ -210,21 +189,17 @@ public:
 	// Start a thread level
 	void startThreadLevelInfo(int threadIndex) {
 		struct threadLevelInfo * info = &_threadLevelInfo[_threadLevel];
-
 		start(&info->startTime);
 		info->beginIndex = threadIndex;
 		info->endIndex = threadIndex;
-		
 		//fprintf(stderr, "starting a new thread level\n");
 	}
 	
 	// Start a thread level
 	void stopThreadLevelInfo(void) {
 		struct threadLevelInfo * info = &_threadLevelInfo[_threadLevel];
-
 		info->elapse = elapsed2ms(stop(&info->startTime, NULL));
-
-		//fprintf(stderr, "PHASE end %ld\n", info->elapse);
+		fprintf(stderr, "PHASE end %ld\n", info->elapse);
 	}
 
 	unsigned long getTotalThreadLevels(void) {
@@ -252,22 +227,13 @@ public:
     thread_t * thread = getThreadInfoByIndex(index);
 		thread->ptid = gettid(); //parent tid information
 		thread->index = index;
-		thread->latency = 0;
-		thread->accesses = 0;
 		thread->levelIndex = _threadLevel; 
 		start(&thread->startTime);
 			
-		// Now find one available heapid for this thread.
-		//thread->heapid = allocHeapId();
 
-		// Check whether we are still in the the normal case
-		if(thread->ptid != _origThreadId) {
-		//	fprintf(stderr, "thread->ptid %d origthreadid %d\n", thread->ptid, _origThreadId);
-			_predPerfImprovement = false;
-		}
  
 		// If alivethreads is 1, we are creating new threads now.
-	//	fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
+	 	fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
 		if(alivethreads == 0) {
 			// We need to save the starting time
 			startThreadLevelInfo(index);
@@ -275,7 +241,7 @@ public:
 		else if(alivethreads == 1) {
 			// Now we are trying to create more threads
 			// Serial phase is ended now.
-			//_isMultithreading = true;
+			_isMultithreading = true;
 	
 			current->childBeginIndex = index;
 			current->childEndIndex = index;
@@ -336,7 +302,6 @@ public:
 	
 		//children->entryStart = tindex * xdefines::MAX_ENTRIES_PER_THREAD;
 		
-		//total_threads++;
 
     result =  WRAP(pthread_create)(tid, attr, startThread, (void *)children);
 		
@@ -397,9 +362,6 @@ public:
 
     current = (thread_t *)arg;
 
-#ifdef USING_IBS
-    startIBS(current->index);
-#endif
     current->self = pthread_self();
 		current->tid = gettid();
 
@@ -411,76 +373,13 @@ public:
 
 		// Get the stop time.
 		current->actualRuntime = elapsed2ms(stop(&current->startTime, NULL));
-		//fprintf(stderr, "tid %d index %d latency %lx actualRuntime %ld\n", current->tid, current->index, current->latency, current->actualRuntime);
+		//fprintf(stderr, "tid %d index %d  actualRuntime %ld\n", current->tid, current->index,  current->actualRuntime);
 
     return result;
   }
 
 	void* getPrivateStackTop() {return current->stackTop;}
 	
-	// In the end, we should compute the total latency.
-	unsigned long getTotalLatency(int startIndex, int stopIndex) {
-    int index = startIndex;
-
-		unsigned long latency = 0;
-
-		//fprintf(stderr, "threadindex %d\n", _threadIndex);
-    thread_t * thread;
-    while(true) {
-
-			// Get the latency of all active threads. 
-      thread = getThreadInfoByIndex(index);
-			latency += thread->latency;				        
-
-			index++;
-			
-			// We will skipp the original thread.
-			if(index%xdefines::MAX_THREADS == 0) {
-				index = 1; 
-			}
-			
-			// If we have checked all threads, let's return now.
-			if(index == stopIndex) {
-				break;
-			}
-		}
-
-		// Return the full latency
-		return latency;
-	}
-
-	// In the end, we should compute the total latency.
-	unsigned long getTotalAccesses(int startIndex, int stopIndex) {
-    int index = startIndex;
-
-		unsigned long accesses = 0;
-
-		//fprintf(stderr, "threadindex %d\n", _threadIndex);
-    thread_t * thread;
-    while(true) {
-
-			// Get the latency of all active threads. 
-      thread = getThreadInfoByIndex(index);
-			accesses += thread->accesses;				        
-
-			index++;
-			
-			// We will skipp the original thread.
-			if(index%xdefines::MAX_THREADS == 0) {
-				index = 1; 
-			}
-			
-			// If we have checked all threads, let's return now.
-			if(index == stopIndex) {
-				break;
-			}
-		}
-		
-		return accesses;
-
-	}
-
-	//inline int getTotalThreads() { return total_threads; }
 
 
 
@@ -497,30 +396,26 @@ private:
 
 	// Now we will mark the exit of a thread 
   void markThreadExit(thread_t * thread) {
-  // fprintf(stderr, "remove thread %p with thread index %d\n", thread, thread->index);
+    // fprintf(stderr, "remove thread %p with thread index %d\n", thread, thread->index);
     global_lock();
 
     --_aliveThreads;
 
 		if(_aliveThreads == 1) {
-			//_isMultithreading = false;
+			_isMultithreading = false;
 			
 			// Now we have to update latency information for the current level
-    	if(_predPerfImprovement) {
-				stopThreadLevelInfo();
+			stopThreadLevelInfo();
 
-				// Now we will udpate the level.
-				_threadLevel++;
+			// Now we will udpate the level.
+			_threadLevel++;
 
-				// Now we will start a new serial phase.			
-				startThreadLevelInfo(_threadIndex);
-    	}
+			// Now we will start a new serial phase.			
+			startThreadLevelInfo(_threadIndex);
 		}
+    
+		global_unlock();
 
-		// Release the heap id for this thread.
-		//releaseHeap(thread->heapid);
-
-    global_unlock();
   }
 	
 
@@ -530,11 +425,6 @@ private:
   int _tid;
 	int _numCPUs;
 	pid_t _origThreadId;
-	int _heapid;	
-
-	//int total_threads;
-	// We are adding a total latency here.
-	bool  _predPerfImprovement;
 
   // Total threads we can support is MAX_THREADS
   thread_t  _threads[xdefines::MAX_THREADS];

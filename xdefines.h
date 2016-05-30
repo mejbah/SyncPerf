@@ -100,25 +100,19 @@ extern "C"
 		unsigned long parentRuntime;
 		unsigned long levelIndex; // In which phase
 
-		unsigned long latency;
-		unsigned long accesses;
 
     // We used this to record the stack range
     void * stackBottom;
     void * stackTop;	
 
-		//unsigned int entryStart;
   } thread_t;
 
-	extern unsigned long textStart, textEnd;
-  extern unsigned long globalStart, globalEnd;
-  extern unsigned long heapStart, heapEnd;
   // Whether current thread is inside backtrace phase
   // If yes, then we do not need to get backtrace for current malloc.
   extern __thread thread_t * current;
   //extern __thread bool isBacktrace; 
   //extern bool initialized;
-	//extern bool _isMultithreading;
+	extern bool _isMultithreading;
 	
 
 	// inline char getThreadBuffer()
@@ -131,11 +125,6 @@ extern "C"
     return current->tid;
   }
 
-	// Get theap id
-	inline int getHeapId(void) {
-		return current->heapid;
-	}
-
   // Get thread index
   inline int getThreadIndex(void) {
     return current->index;
@@ -145,19 +134,11 @@ extern "C"
     return (unsigned int)current->stackTop;
   }
 
-	// Update thread latency
-	inline void updateThreadLatency(unsigned long latency) {
-		current->latency += latency;
-		current->accesses += 1;
-//		fprintf(stderr, "Updating THREAD%d: latency %lx now %lx\n", current->index, latency, current->latency);
-	}
 
   enum { USER_HEAP_BASE     = 0x40000000 }; // 1G
   enum { USER_HEAP_SIZE = 1048576UL * 8192  * 8}; // 8G
   enum { MAX_USER_SPACE     = USER_HEAP_BASE + USER_HEAP_SIZE };
   enum { INTERNAL_HEAP_BASE = 0x100000000000 };
-  enum { CACHE_STATUS_BASE   = 0x200000000000 };
-  enum { CACHE_TRACKING_BASE = 0x200080000000 };
   enum { MEMALIGN_MAGIC_WORD = 0xCFBECFBECFBECFBE };
   enum { CALL_SITE_DEPTH = 2 };
 
@@ -174,22 +155,6 @@ extern "C"
     return aligndown((size_t)addr, CACHE_LINE_SIZE);
   }
 
-  //inline unsigned long * getCachelineStatus(void * addr) {
-  inline unsigned long getCacheline(size_t offset) {
-    return offset/CACHE_LINE_SIZE;
-  }
-
-  inline unsigned long getCachelines(size_t offset) {
-    return offset/CACHE_LINE_SIZE;
-  }
-  
-  // Caculate how many cache lines are occupied by specified address and size.
-  inline int getCoveredCachelines(unsigned long start, unsigned long end) {
-    size_t size = end - start;
-    int lines = getCachelines(size);
-    return end%CACHE_LINE_SIZE == 0 ?  lines : lines+1;
-  }
-  
   inline unsigned long getMin(unsigned long a, unsigned long b) {
     return (a < b ? a : b);
   }
