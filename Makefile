@@ -5,7 +5,7 @@ CFLAGS= -g -O2 -fno-omit-frame-pointer -I. -D_GNU_SOURCE -fPIC -DWITH_TRYLOCK  -
 LD = $(CC)
 LDFLAGS = -lpthread -ldl  -shared -lstdc++
 
-TARGET = liblockperf.so 
+TARGET = libsyncperf.so 
 
 SRCS = $(wildcard *.c)
 CPP_SRCS = $(wildcard *.cpp)
