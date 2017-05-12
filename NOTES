@@ -1,3 +1,0 @@
-- Added ASSUME_PRIVATE_FUTEX in lowlevellock.h
-- #define SYS_futex       240 in lowlevellock.h
-- added sysdep.h
