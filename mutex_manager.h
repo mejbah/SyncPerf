@@ -11,14 +11,16 @@ extern "C" {
 
 #include "finetime.h"
 
-#define MAX_CALL_STACK_DEPTH 5
-#define MAX_NUM_STACKS 30
+#define MAX_CALL_STACK_DEPTH 6
+#define MAX_NUM_STACKS 100
 
 #ifdef GET_STATISTICS
 extern volatile unsigned long totalLocks;
+extern volatile unsigned long totalCondWaits;
+extern volatile unsigned long totalConflicts;
 #endif
-typedef unsigned long WAIT_TIME_TYPE;
-//typedef double  WAIT_TIME_TYPE;
+//typedef unsigned long WAIT_TIME_TYPE;
+typedef double  WAIT_TIME_TYPE;
 typedef unsigned int UINT32;
 
 

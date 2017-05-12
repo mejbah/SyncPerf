@@ -16,6 +16,12 @@
 #include <unistd.h>
 #include <map>
 
+/*
+ * @file   mutex_manager.cpp
+ * @brief  Utils for managing mutex meta data
+ * @author Mejbah<mohammad.alam@utsa.edu>
+ */
+
 
 
 extern RecordEntries<mutex_t>sync_vars;
@@ -131,9 +137,9 @@ int comp_stack( long s1[], long s2[] ){
 int add_new_context( mutex_t *mutex, long ret_address, unsigned int esp_offset ) {
 	for( int i=0; i< mutex->stack_count; i++ ){
     if(mutex->eip[i] == ret_address) {
-    	if(mutex->esp_offset[i] == esp_offset) {
+    	//if(mutex->esp_offset[i] == esp_offset) {
 				return 0;
-			}
+			//}
 		}
   }
 
@@ -179,9 +185,11 @@ void start_timestamp( struct timeinfo *st )
 
 void add_cond_wait_time(size_t mut_index, int thd_idx, struct timeinfo *st)
 {
-	struct timeinfo end;
-  double elapse = stop(st, &end); 
-  WAIT_TIME_TYPE waits = elapsed2ms(elapse);
+	//struct timeinfo end;
+	
+	WAIT_TIME_TYPE waits = get_elapsed2ms( st, NULL);
+  //double elapse = stop(st, &end); 
+  //WAIT_TIME_TYPE waits = elapsed2ms(elapse);
 
 	get_thread_mutex_data(mut_index,thd_idx)->cond_futex_wait += waits;	
 
@@ -189,9 +197,10 @@ void add_cond_wait_time(size_t mut_index, int thd_idx, struct timeinfo *st)
 
 void add_futex_wait(size_t mut_index, int thd_idx, struct timeinfo *st)
 {
-	struct timeinfo end;
-  double elapse = stop(st, &end); 
-  WAIT_TIME_TYPE waits = elapsed2ms(elapse);
+	//struct timeinfo end;
+	WAIT_TIME_TYPE waits = get_elapsed2ms( st, NULL);
+  //double elapse = stop(st, &end); 
+  //WAIT_TIME_TYPE waits = elapsed2ms(elapse);
 
 	get_thread_mutex_data(mut_index,thd_idx)->futex_wait += waits;
 }
@@ -228,9 +237,6 @@ void inc_trylock_fail_count(size_t mut_index, int thd_idx){
 }
 
 #endif // WITH_TRYLOCK
-
-
-
 
 
 

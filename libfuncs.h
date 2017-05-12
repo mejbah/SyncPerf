@@ -2,7 +2,7 @@
 #define _REAL_H_
 
 #include <sys/types.h>
-
+#include <sys/time.h>
 #define WRAP(x) _real_##x
 
 // libc functions
@@ -34,6 +34,7 @@ extern int (*WRAP(pthread_mutex_destroy))(pthread_mutex_t*);
 extern int (*WRAP(pthread_condattr_init))(pthread_condattr_t*);
 extern int (*WRAP(pthread_cond_init))(pthread_cond_t*, pthread_condattr_t*);
 extern int (*WRAP(pthread_cond_wait))(pthread_cond_t*, pthread_mutex_t*);
+extern int (*WRAP(pthread_cond_timedwait))(pthread_cond_t*, pthread_mutex_t*,const struct timespec*);
 extern int (*WRAP(pthread_cond_signal))(pthread_cond_t*);
 extern int (*WRAP(pthread_cond_broadcast))(pthread_cond_t*);
 extern int (*WRAP(pthread_cond_destroy))(pthread_cond_t*);

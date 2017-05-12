@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 #include <pthread.h>
 
@@ -36,6 +37,7 @@ int (*WRAP(pthread_mutex_destroy))(pthread_mutex_t*);
 int (*WRAP(pthread_condattr_init))(pthread_condattr_t*);
 int (*WRAP(pthread_cond_init))(pthread_cond_t*, pthread_condattr_t*);
 int (*WRAP(pthread_cond_wait))(pthread_cond_t*, pthread_mutex_t*);
+int (*WRAP(pthread_cond_timedwait))(pthread_cond_t*, pthread_mutex_t*, const struct timespec*);
 int (*WRAP(pthread_cond_signal))(pthread_cond_t*);
 int (*WRAP(pthread_cond_broadcast))(pthread_cond_t*);
 int (*WRAP(pthread_cond_destroy))(pthread_cond_t*);

@@ -10,17 +10,37 @@
 #include "mutex_manager.h"
 #include<map>
 #include<vector>
-//#include<string.h>
+#include <stdexcept>
 
 #define MAXBUFSIZE 4096
 #define COMBINED_REPORT 1
 
+/*
+ * @file   report.h
+ * @brief  Reporting utilities for SyncPerf
+ * @author Mejbah<mohammad.alam@utsa.edu>
+ */
+
+
+
+#ifdef REPORT_LINE_INFO
+//Map for call stack and conflict rate
+typedef std::map< std::string, std::vector<double> > Map;
+#endif
+
+
 typedef struct {
-	char line_info[MAX_NUM_STACKS][MAX_CALL_STACK_DEPTH * 30];
+	char line_info[MAX_NUM_STACKS][MAX_CALL_STACK_DEPTH * 50];
 	double conflict_rate;
 	double frequency;
 	int count; //number of line info
 }sync_perf_t;
+
+typedef struct {
+	UINT32 access_count;
+	UINT32 fail_count;
+	char call_site[MAX_CALL_STACK_DEPTH * 50];
+}call_site_info_t;
 
 
 class Report {
@@ -36,17 +56,23 @@ public:
     return instance;		
 	}	
 
-	enum { THRESHOLD_CONFLICT = 10 };
-	enum { THRESHOLD_FREQUENCY = 10000 };
+	enum { THRESHOLD_CONFLICT = 5 };
+	enum { THRESHOLD_FREQUENCY = 1 }; //per millisecond
 
 	std::string exec(const char* cmd) {
+		//std::cout << "exec CMD: " << cmd << std::endl; //TODO: remove this
     FILE* pipe = popen(cmd, "r");
-    if (!pipe) return "ERROR";
+    if (!pipe) {
+			fprintf( stderr, "Could not pipe in exec function\n" );
+			return "ERROR";
+		}
     char buffer[128];
     std::string result = "";
     while (!feof(pipe)) {
-        if (fgets(buffer, 128, pipe) != NULL)
+        if (fgets(buffer, 128, pipe) != NULL){
+						//printf("%s", buffer); //TODO: remove this
             result += buffer;
+				}
     }
     pclose(pipe);
     return result;
@@ -84,7 +110,6 @@ public:
       //printf("%#lx\n", m->stacks[i][j]);  
       sprintf(buf, "addr2line -e %s  -a 0x%lx  | tail -1", _curFilename, call_stack[j] );
       std::string source_line =  exec(buf);
-
       if(source_line[0] != '?') { // not found
         //get the file name only
         std::size_t found = source_line.find_last_of("/\\");
@@ -97,6 +122,69 @@ public:
     return stack_str;
   }
 
+#if 0
+	void updateCallSiteInfo( std::map<size_t, call_site_info_t>& call_site_map, UINT32 access_count, UINT32 fail_count, size_t call_site, std::string context ){
+		std::map<size_t, call_site_info_t>::iterator it = call_site_map.find(call_site);
+		if(it != call_site_map.end()){
+			it->second.access_count += access_count;
+			it->second.fail_count += fail_count;
+		}
+		else{
+			call_site_info_t new_context;
+			new_context.access_count = access_count;
+			new_context.fail_count = fail_count;
+			strcpy(new_context.call_site, context.c_str());
+			call_site_map[call_site] = new_context;
+		}
+
+	}
+#endif
+
+	
+#ifdef REPORT_LINE_INFO
+	void updateCallStackMap( Map& call_stack_map, std::string call_contexts, double conflict_rate){
+		
+		Map::iterator it = call_stack_map.find(call_contexts);
+		if(it != call_stack_map.end()){
+			it->second.push_back(conflict_rate);
+		}
+		else{
+			std::vector<double>new_entry;
+			new_entry.push_back(conflict_rate);
+			call_stack_map.insert( Map::value_type(call_contexts,new_entry) );
+		}
+
+	}
+
+	void findAsymmetricLock( Map& call_stack_map, std::vector<std::string>&results ){
+		for(Map::iterator it = call_stack_map.begin(); it != call_stack_map.end(); it++){
+			//std::cout << it->first << std::endl;
+			//find  variance in it->second vector conflict rates
+			if(it->second.size()>1){
+				std::vector<double>::iterator iter = it->second.begin();
+				float min,max;
+				min  = max = *iter;
+				for(; iter != it->second.end(); iter++){
+					if(min > *iter){
+						min = *iter;
+					}
+					if( max < *iter){
+						max = *iter;
+					}
+				}
+				if((max -min) > 10){ //Threshold for conflict rate difference, TODO: use variance algorithm
+					results.push_back(it->first);
+				}
+			}
+		}
+	}
+
+	void printCallStackMap( Map& call_stack_map ){
+		for(Map::iterator it = call_stack_map.begin(); it != call_stack_map.end(); it++){
+			std::cout << it->first << std::endl;
+		}				
+	}
+#endif
 
 	void print( RecordEntries<mutex_t>&sync_vars ){
 
@@ -105,8 +193,9 @@ public:
 		setFileName();
 #endif
 
-		std::cout<< "\n\nEND OF PROGRAM";
-		std::cout<< "\nSYNCPERF REPORTING in file: syncperf.report " << std::endl;
+		std::cout<< "\n\nSyncPerf Msg: END OF PROGRAM";
+		
+		std::cout<< "\nSyncPerf Msg: Reporting in file: syncperf.report\nSyncPerf Msg: Thread reports in file: thread.csv " << std::endl;
 #ifdef COMBINED_REPORT
 		std::vector<sync_perf_t>high_conflict_low_freq;
 		std::vector<sync_perf_t>high_conflict_high_freq;
@@ -140,13 +229,39 @@ public:
 		unsigned long qhl_count  = 0;
 #endif
 	  int total_threads = xthread::getInstance().getMaxThreadIndex();
+		unsigned long total_levels = xthread::getInstance().getTotalThreadLevels();
 
 		WAIT_TIME_TYPE *thread_waits = malloc(sizeof(WAIT_TIME_TYPE)*total_threads);
 		for(int idx=0; idx<total_threads; idx++) thread_waits[idx] = 0;	
+#if 0	
+		std::fstream thd_fs;
 
-		int total_sync_vars = sync_vars.getEntriesNumb();
+		thd_fs.open("thread_waits.csv", std::fstream::out);
+		thd_fs << "tid, type, runtime, wait_time" << std::endl; 
 
+		for(int idx=0; idx< total_threads; idx++){
+			thread_t *thd = xthread::getInstance().getThreadInfoByIndex(idx);
+			thd_fs << idx << ", " << std::hex <<(void*)( thd->startRoutine)<< ", " <<std::dec<< thd->actualRuntime << "," <<  thread_waits[idx]  << std::endl;
+		}
+#endif
+		unsigned long total_thread_levels=xthread::getInstance().getTotalThreadLevels();
+
+		threadLevelInfo *thd_level = xthread::getInstance().getThreadLevelByIndex(total_thread_levels);
+#if 0
+		thd_fs << "Elapsed time " << thd_level->elapse << std::endl;
+#endif
+		//double elapsed_time_for_freq = thd_level->elapse; //milliseconds
+		double elapsed_time_for_freq = thd_level->elapse < 1000 ? 1000 : thd_level->elapse; //TODO: remove this, use the previous line instead
+#if 0		
+		thd_fs.close();	
+#endif 
+
+		//std::map<size_t, call_site_info_t>call_site_map;
 		
+#ifdef REPORT_LINE_INFO
+		Map call_stack_map;
+#endif
+		int total_sync_vars = sync_vars.getEntriesNumb();
 
 		int id = 0; //for debugging puporse, shoud match with total locks	
 
@@ -165,7 +280,7 @@ public:
 			// sum all thread local data
 			for(int idx=0; idx<total_threads; idx++ ){
 				//count
-			  thread_mutex_t *per_thd_data =get_thread_mutex_data( m->entry_index, idx);
+			  thread_mutex_t *per_thd_data = get_thread_mutex_data( m->entry_index, idx);
 				total_access_count += per_thd_data->access_count;
 				total_fail_count += per_thd_data->fail_count;
 				total_cond_wait += per_thd_data->cond_waits;
@@ -181,35 +296,37 @@ public:
 			sync_perf_entry.count = 0;
 			if( total_access_count > 0 ) { //TODO: access_count = 0 is poosible as fix setSyncEntry ignores new mutex ,index already increased in recordentries
 
-				id++; //for debug only
+				id++; //for debug only and for stats
 
 				sync_perf_entry.conflict_rate = (100*total_fail_count)/double(total_access_count);
-				sync_perf_entry.frequency  = double(total_access_count); //TODO: fix freqeuncey using max thd->actualRuntim
+				sync_perf_entry.frequency  = double(total_access_count)/elapsed_time_for_freq; //TODO: fix freqeuncey using max thd->actualRuntim
+
+				//print call stacks
+				for(int con=0; con<m->stack_count; con++){
+#ifdef REPORT_LINE_INFO
+					std::string call_contexts = get_call_stack_string(m->stacks[con]);		
+					//update call stack map
+					updateCallStackMap(call_stack_map, call_contexts,sync_perf_entry.conflict_rate);
+#else
+					int depth = 0;
+			  	std::string call_contexts = "";
+					while(m->stacks[con][depth]){	
+							call_contexts += "0x";
+							//call_contexts += std::to_string(m->stacks[con][depth]);
+							std::stringstream ss;
+							ss << std::hex << m->stacks[con][depth] << std::dec;
+							call_contexts += ss.str();
+							call_contexts += ",";
+							depth++; 
+					}									
+#endif
+					assert(call_contexts.size() <= MAX_CALL_STACK_DEPTH * 50);
+					strcpy(sync_perf_entry.line_info[con], call_contexts.c_str());
+					sync_perf_entry.count++;
+				}
+			
 				
 				if( sync_perf_entry.conflict_rate > THRESHOLD_CONFLICT ){
-
-					//print call stacks
-					for(int con=0; con<m->stack_count; con++){
-#ifdef	 REPORT_LINE_INFO
-						std::string call_contexts = get_call_stack_string(m->stacks[con]);		
-#else
-						int depth = 0;
-					  std::string call_contexts = "";
-						while(m->stacks[con][depth]){	
-								call_contexts += "0x";
-								//call_contexts += std::to_string(m->stacks[con][depth]);
-								std::stringstream ss;
-								ss << m->stacks[con][depth];
-								call_contexts += ss.str();
-								call_contexts += ",";
-								depth++; 
-						}									
-#endif	 
-						assert(call_contexts.size() <= MAX_CALL_STACK_DEPTH * 30);
-						strcpy(sync_perf_entry.line_info[con], call_contexts.c_str());
-						sync_perf_entry.count++;
-
-					}
 
 					if( sync_perf_entry.frequency > THRESHOLD_FREQUENCY ){
 #ifdef COMBINED_REPORT
@@ -231,28 +348,6 @@ public:
 				else{
 					if( sync_perf_entry.frequency > THRESHOLD_FREQUENCY ){
 						//print call stacks
-						for(int con=0; con<m->stack_count; con++){
-#ifdef	 REPORT_LINE_INFO
-							std::string call_contexts = get_call_stack_string(m->stacks[con]);		
-#else
-							int depth = 0;
-						  std::string call_contexts = "";
-							while(m->stacks[con][depth]){	
-									call_contexts += "0x";
-									//call_contexts += std::to_string(m->stacks[con][depth]);
-									std::stringstream ss;
-									ss << m->stacks[con][depth];
-									call_contexts += ss.str();
-
-									call_contexts += ",";
-									depth++; 
-							}									
-#endif	 
-							assert(call_contexts.size() <= MAX_CALL_STACK_DEPTH * 30);
-							strcpy(sync_perf_entry.line_info[con], call_contexts.c_str());
-							sync_perf_entry.count++;
-
-						}		
 #ifdef COMBINED_REPORT
 						low_conflict_high_freq.push_back(sync_perf_entry);
 #else
@@ -262,7 +357,22 @@ public:
 					}
 				}
 			}
-		}	
+		}
+
+		std::fstream thd_fs;
+
+		thd_fs.open("thread_waits.csv", std::fstream::out);
+		thd_fs << "tid, type, runtime, wait_time" << std::endl; 
+
+		for(int idx=0; idx< total_threads; idx++){
+			thread_t *thd = xthread::getInstance().getThreadInfoByIndex(idx);
+			thd_fs << idx << ", " << std::hex <<(void*)( thd->startRoutine)<< ", " <<std::dec<< thd->actualRuntime << "," <<  thread_waits[idx]  << std::endl;
+		}
+
+		
+		//thd_fs << "Elapsed time " << thd_level->elapse << std::endl;
+		thd_fs.close();
+	
 #ifdef COMBINED_REPORT
 		std::fstream fs;
 		fs.open("syncperf.report", std::fstream::out);
@@ -281,24 +391,39 @@ public:
 
 		//low conflict, high frequency
 		fs << "\n\n==============================" << std::endl;
-		fs << "HIGH CONFLICT , LOW FREQUENCY" << std::endl;
+		fs << "LOW CONFLICT , HIGH FREQUENCY" << std::endl;
 		fs << "==============================" << std::endl;
 		write_report(fs, low_conflict_high_freq);
-	
+
+
+#ifdef REPORT_LINE_INFO
+		//find asymmetric locks
+		//printCallStackMap(call_stack_map);
+		std::vector<std::string>asym_locks;
+		findAsymmetricLock(call_stack_map,asym_locks);
+		
+		if(asym_locks.size()>0){
+			fs << "\n\n======================"<< std::endl;
+			fs << "Asymmetric Locks found :\t" << asym_locks.size() <<   std::endl;
+			fs << "========================" << std::endl;
+			for( std::vector<std::string>::iterator it = asym_locks.begin(); it != asym_locks.end(); it++){
+				fs << *it << std::endl;
+			}
+		
+		}
+#endif
 		fs.close();
 #endif
-		std::fstream thd_fs;
 
-		thd_fs.open("thread_waits.csv", std::fstream::out);
-		thd_fs << "tid, type, runtime" << std::endl; 
-
-		for(int idx=0; idx< total_threads; idx++){
-			thread_t *thd = xthread::getInstance().getThreadInfoByIndex(idx);
-			thd_fs << idx << ", " << std::hex <<(void*)( thd->startRoutine)<< ", " <<std::dec<< (thd->actualRuntime - thread_waits[idx]) << std::endl;
-		}
-
-		thd_fs.close();	
-		std::cout << total_threads << " threads, " << id <<  " mutexes\n";
+		std::cout<< "STATISTICS:\n";
+		std::cout<< "\ttotal Distinct Locks: " << id << std::endl;
+		std::cout<< "\ttatal Acquired Locks: " << totalLocks << std::endl;
+		std::cout<< "\ttatal Conflicts: " << totalConflicts << std::endl;
+		std::cout<< "\ttatal CondWaits: " << totalCondWaits << std::endl;
+		
+		//std::cout << total_threads << " threads, " << id <<  " mutexes\n";
+		
+		
 
 	}
 

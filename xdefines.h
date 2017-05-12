@@ -31,7 +31,6 @@
 #include <errno.h>
 #include <ucontext.h>
 #include <pthread.h>
-//#include <new>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -40,12 +39,10 @@
 #include "finetime.h"
 #include "libfuncs.h"
 
-//#include "log.h"
 
 /*
  * @file   xdefines.h   
- * @brief  Global definitions for Sheriff-Detect and Sheriff-Protect.
- * @author Emery Berger <http://www.cs.umass.edu/~emery>
+ * @brief  Global definitions for SyncPerf
  * @author Tongping Liu <http://www.cs.umass.edu/~tonyliu>
  */ 
 #ifdef __cplusplus
@@ -56,25 +53,12 @@ extern "C"
 	#define gettid() syscall(SYS_gettid)
  
   enum { CACHE_LINE_SIZE = 64 };
-  enum { CACHE_LINE_SIZE_SHIFTS = 6 };
-  enum { CACHE_LINE_SIZE_MASK = (CACHE_LINE_SIZE-1)};
-  
-  enum { PREDICTION_LARGE_CACHE_LINE_SIZE = 128 };
 	#define LOG_SIZE 4096
 
-  typedef enum e_access_type {
-    E_ACCESS_READ = 0,
-    E_ACCESS_WRITE
-  } eAccessType;
 
   typedef struct thread {
-		// The heap index and thread index to the threads pool.
-		// index means that the current thread is the index-th thread in the system.
-		// heapid is got by checking the availablity of threads in the system.
-		// We don't want to make two alive threads to use the same subheap to avoid 
-		// false sharing problem. 
+
     int       index;
-		int       heapid;
 
 		// What is the actual thread id. tid can be greater than 1024.
 		int       tid;
@@ -96,8 +80,10 @@ extern "C"
 
 		// How much latency for all accesses on this thread?
 		struct timeinfo startTime;
-		unsigned long actualRuntime;
-		unsigned long parentRuntime;
+		//unsigned long actualRuntime;
+		double actualRuntime;
+		//unsigned long parentRuntime;
+		double parentRuntime;
 		unsigned long levelIndex; // In which phase
 
 
@@ -180,10 +166,7 @@ public:
   enum { PAGE_SIZE_MASK = (PAGE_SIZE-1) };
 
   enum { MAX_THREADS = 2048 };//4096 };
-  
-	//enum { MAX_SYNC_ENTRIES = 0x10000 };
 
-	//                 e5ccc = 941260
 	enum { MAX_SYNC_ENTRIES = 1000000 };
 		
 	// We only support 64 heaps in total.
@@ -198,32 +181,12 @@ public:
 
   enum { ADDRESS_ALIGNMENT = sizeof(void *) };
 
-	// FIXME: should be adjusted according to real situation.
-	enum { CYCLES_PER_NONFS_ACCESS = 3 }; 
 
   // sizeof(unsigned long) = 8;
   enum { ADDRESS_ALIGNED_BITS = 0xFFFFFFFFFFFFFFF8 };
 
-  // We start to track all accceses only when writes is larger than this threshold.
-  // If not, then we only need to track writes. 
-  enum { THRESHOLD_TRACK_DETAILS = 2 };
  
-  // We should guarantee that sampling period should cover the prediction phase.
-  enum { SAMPLE_ACCESSES_EACH_INTERVAL = THRESHOLD_TRACK_DETAILS};
-  //enum { SAMPLE_INTERVAL = SAMPLE_ACCESSES_EACH_INTERVAL * 100 };
-  enum { SAMPLE_INTERVAL = SAMPLE_ACCESSES_EACH_INTERVAL * 1 };
-  //enum { SAMPLE_INTERVAL = SAMPLE_ACCESSES_EACH_INTERVAL * 100 };
 
-  // Now we can start to check potential false sharing 
-  enum { THRESHOLD_PREDICT_FALSE_SHARING = THRESHOLD_TRACK_DETAILS * 2 };
-  enum { THRESHOLD_HOT_ACCESSES = THRESHOLD_TRACK_DETAILS/WORDS_PER_CACHE_LINE };
-
-  // We only care about those words whose access is larger than the average number under 
-  // the tracking period 
-  enum { THRESHOLD_AVERAGE_ACCESSES = THRESHOLD_TRACK_DETAILS >> 1 };
-  
-
-  enum { THRESHOLD_REPORT_INVALIDATIONS = 1 };
 };
 #endif
 #endif

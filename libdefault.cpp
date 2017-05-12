@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <stdarg.h>
-//#include "cachetrack.h"
 #include "xrun.h"
 #include "mutex_manager.h"
 #include "recordentries.hh"
@@ -29,13 +28,12 @@ extern "C" {
  
     xrun::getInstance().initialize();
 		sync_vars.initialize(xdefines::MAX_SYNC_ENTRIES);
-		//thread_sync_data.initialize(xdefines::MAX_SYNC_ENTRIES * xdefines::MAX_THREADS);
 		thread_sync_data = MM::mmapAllocatePrivate(xdefines::MAX_SYNC_ENTRIES * xdefines::MAX_THREADS * sizeof(thread_mutex_t));	
 		
 
     initialized = true;
 
-		fprintf(stderr, "Now we have initialized successfuuly\n"); 
+		//fprintf(stderr, "Now we have initialized successfully\n"); 
 	
   }
 

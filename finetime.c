@@ -18,7 +18,7 @@
 /*
  * @file   finetime.c
  * @brief  Fine timing management based on rdtsc.
- * @author Tongping Liu <http://www.cs.utsa.edu/~tongpingliu>
+ * @author Mejbah<mohammad.alam@utsa.edu>
  */
 
 #include <time.h>
@@ -27,95 +27,52 @@
 #include <stdlib.h>
 
 #include "finetime.h"
-double cpu_freq = 1599000; //KHz
 
-void __get_time(struct timeinfo * ti)
+double cpu_freq = 2000000; //KHz
+
+void get_tsc( struct timeinfo *ti )
 {
-	unsigned long tlow, thigh;
-
-	asm volatile ("rdtsc"
-		  : "=a"(tlow),
-		    "=d"(thigh));
-
-	ti->low  = tlow;
-	ti->high = thigh;
+  unsigned hi, lo;
+  __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+	ti->low  = lo;
+	ti->high = hi;
 }
 
-double __count_elapse(struct timeinfo * start, struct timeinfo * stop)
+
+unsigned long get_elapsed_cycle( struct timeinfo *start, struct timeinfo *stop)
 {
-	double elapsed = 0.0;
-
-	if(stop->high < start->high) {
-		elapsed = (double)(stop->low) + (double)(ULONG_MAX)*(double)(stop->high + ULONG_MAX - start->high) - (double)start->low;
-	}
-	else  
-	elapsed = (double)(stop->low) + (double)(ULONG_MAX)*(double)(stop->high - start->high) - (double)start->low;
-	//if (stop->low < start->low)
-	//	elapsed -= (double)ULONG_MAX;
-
-	//printf("STOP: low %ld hight %ld START: low %ld high %ld\n", stop->low, stop->high, start->low, start->high);
 	
-	//printf("elapsed %f\n", elapsed);
- 
-	if(elapsed > 5000.0) {
-		//while(1);
+	unsigned long begin = ( (unsigned long )start->low)|( ((unsigned long )start->high)<<32 );
+	unsigned long  end = ( (unsigned long )stop->low)|( ((unsigned long )stop->high)<<32 );
+	if( stop->high < start->high)
+	{
+			return (TSC_MAX - begin)+end;
 	}
-	return elapsed;
+	else {
+		return end - begin;
+	}
 }
 
-double get_elapse (struct timeinfo * start, struct timeinfo * stop)
-{
-	double elapse = 0.0;
-   	elapse = __count_elapse(start, stop);
-
-	return elapse;
-}
-
-/* The following functions are exported to user application. Normally, a special case about using this file is like this.
-       	start();
-       	*****
- 	elapse = stop();
-		
-	time = elapsed2us();
+/**
+ * TODO: not right way to count time, but works for fine for performance compare purpose
  */
+double get_elapsed2ms( struct timeinfo *start, struct timeinfo *stop)
+{
+	if(stop==NULL){
+		struct timeinfo end;
+		get_tsc(&end);
+		return (double)get_elapsed_cycle(start,&end)/ cpu_freq;
+	}
+	else {
+		get_tsc(stop);
+		return (double)get_elapsed_cycle(start,stop) / cpu_freq;
+	}
+}
 
 void start(struct timeinfo *ti)
 {
 	/* Clear the start_ti and stop_ti */
-	__get_time(ti);
+	get_tsc(ti);
 	return;
 }
 
-/*
- * Stop timing.
- */
-double stop(struct timeinfo * begin, struct timeinfo * end)
-{
-	double elapse = 0.0;
-	struct timeinfo stop_ti;
-
-	if (end == NULL) {
-		__get_time(&stop_ti);
-		elapse = get_elapse(begin, &stop_ti);
-	}
-	else {
-		__get_time(end);
-		elapse = get_elapse(begin, end);
-	}
-
-	return elapse;
-}
-
-/* Provide a function to turn the elapse time to microseconds. */
-unsigned long elapsed2ms(double elapsed)
-{
-	unsigned long ms;
-	ms =(unsigned long)(elapsed/cpu_freq);
-	
-#if 0
-	if(ms > 5000) {
-		while(1) ;
-	}
-#endif
-	return(ms);
-}

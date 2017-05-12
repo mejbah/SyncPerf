@@ -44,14 +44,19 @@
 
 #ifdef GET_STATISTICS
 volatile unsigned long totalLocks;
+volatile unsigned long totalCondWaits;
+volatile unsigned long totalConflicts;
 #endif
 
 int
 pthread_mutex_lock (pthread_mutex_t *mutex)
 {
-#ifndef NO_INCR
+
 #ifdef GET_STATISTICS
+#ifndef NO_INCR
 	__atomic_fetch_add(&totalLocks, 1, __ATOMIC_RELAXED);
+#else
+	__atomic_fetch_add(&totalCondWaits, 1, __ATOMIC_RELAXED);
 #endif
 #endif
 	struct timeinfo wait_start;
@@ -151,6 +156,9 @@ simple:
 			futex_flag=1; 			
 			start_timestamp(&wait_start);
 			inc_fail_count(mutex_data->entry_index,tid);
+#ifdef GET_STATISTICS
+			__atomic_fetch_add(&totalConflicts, 1, __ATOMIC_RELAXED);
+#endif 
 		}
 #endif
 #endif

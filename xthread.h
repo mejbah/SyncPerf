@@ -2,8 +2,8 @@
 // -*- C++ -*-
 
 /*
-Allocate and manage thread index.
-Second, try to maintain a thread local variable to save some thread local information.
+	Allocate and manage thread index.
+	Second, try to maintain a thread local variable to save some thread local information.
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation; either version 2 of the License, or
@@ -47,7 +47,8 @@ extern "C" {
 		int beginIndex;
 		int endIndex;
 		struct timeinfo startTime;
-		unsigned long elapse;
+		//unsigned long elapse;
+		double elapse;
 	};
 }; 
 
@@ -198,8 +199,10 @@ public:
 	// Start a thread level
 	void stopThreadLevelInfo(void) {
 		struct threadLevelInfo * info = &_threadLevelInfo[_threadLevel];
-		info->elapse = elapsed2ms(stop(&info->startTime, NULL));
-		fprintf(stderr, "PHASE end %ld\n", info->elapse);
+		
+		info->elapse = get_elapsed2ms( &info->startTime, NULL);
+		//info->elapse = elapsed2ms(stop(&info->startTime, NULL));
+		//fprintf(stderr, "PHASE end %lu\n", info->elapse);
 	}
 
 	unsigned long getTotalThreadLevels(void) {
@@ -233,7 +236,7 @@ public:
 
  
 		// If alivethreads is 1, we are creating new threads now.
-	 	fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
+	 	//fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
 		if(alivethreads == 0) {
 			// We need to save the starting time
 			startThreadLevelInfo(index);
@@ -294,7 +297,6 @@ public:
 
     // Allocate a global thread index for current thread.
     tindex = allocThreadIndex();
-		//printf("pthread create  index : %d\n", tindex);
     thread_t * children = getThreadInfoByIndex(tindex);
     
     children->startRoutine = fn;
@@ -302,7 +304,8 @@ public:
 	
 		//children->entryStart = tindex * xdefines::MAX_ENTRIES_PER_THREAD;
 		
-
+		//printf("pthread create  index : %d, startime : %lf\n", tindex, children->startTime);
+		
     result =  WRAP(pthread_create)(tid, attr, startThread, (void *)children);
 		
 
@@ -348,7 +351,7 @@ public:
 			thread_t * thisThread;
 
 			// Finding out the thread with this pthread_t 
-			thisThread = getChildThreadStruct(thread);
+			//thisThread = getChildThreadStruct(thread);
 
 			markThreadExit(thisThread);
 		}
@@ -372,8 +375,7 @@ public:
     result = current->startRoutine(current->startArg);
 
 		// Get the stop time.
-		current->actualRuntime = elapsed2ms(stop(&current->startTime, NULL));
-		//fprintf(stderr, "tid %d index %d  actualRuntime %ld\n", current->tid, current->index,  current->actualRuntime);
+		current->actualRuntime = get_elapsed2ms(&current->startTime, NULL);
 
     return result;
   }

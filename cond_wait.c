@@ -163,11 +163,6 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 	val = seq = cond->__data.__wakeup_seq;
 	/* Remember the broadcast counter.  */
 	cbuffer.bc_seq = cond->__data.__broadcast_seq;
-#ifndef ORIGINAL
-	//futex_start_timestamp(curr_meta, idx); // not the right place 
-	//int wait_start_flag = 0;
-	//mejbah added end
-#endif
 	do
 	{
 		unsigned int futex_val = cond->__data.__futex;
@@ -175,7 +170,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 		lll_unlock (cond->__data.__lock, pshared);
 
 		/* Enable asynchronous cancellation.  Required by the standard.  */
-		cbuffer.oldtype = __pthread_enable_asynccancel ();
+		//cbuffer.oldtype = __pthread_enable_asynccancel ();
 
 #if (defined lll_futex_wait_requeue_pi \
 	&& defined __ASSUME_REQUEUE_PI)
@@ -205,7 +200,6 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 #endif			
 #ifndef ORIGINAL
 			inc_cond_wait_count(mutex_data->entry_index, tid);
-			inc_cond_wait_count(mutex_data->entry_index, tid);				
 			start_timestamp(&wait_start);
 #endif					
 			/* Wait until woken by signal or broadcast.  */
@@ -213,7 +207,7 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 		}
 
 		/* Disable asynchronous cancellation.  */
-		__pthread_disable_asynccancel (cbuffer.oldtype);
+		//__pthread_disable_asynccancel (cbuffer.oldtype);
 
 		/* We are going to look at shared data again, so get the lock.  */
 		lll_lock (cond->__data.__lock, pshared);
@@ -221,17 +215,6 @@ pthread_cond_wait (pthread_cond_t *cond, pthread_mutex_t *mutex)
 		/* If a broadcast happened, we are done.  */
 		if (cbuffer.bc_seq != cond->__data.__broadcast_seq)
 			goto bc_out;
-#if 0 //ndef ORIGINAL
-		else { //mejbah added for start timestamp of condwait
-			if(wait_start_flag == 0) {
-				//add_cond_wait_count(curr_meta,idx);
-				inc_cond_wait_count(mutex_data->entry_index, tid);				
-				start_timestamp(&wait_start);
-				wait_start_flag = 1;
-			}
-		}
-#endif
-
 
 		/* Check whether we are eligible for wakeup.  */
 		val = cond->__data.__wakeup_seq;
@@ -274,7 +257,8 @@ bc_out:
 #else
 		int ret = __pthread_mutex_cond_lock (orig_mutex);
 		//if(wait_start_flag)
-			add_cond_wait_time(mutex_data->entry_index, tid, &wait_start);
+		add_cond_wait_time(mutex_data->entry_index, tid, &wait_start);
+		return ret;
 #endif
 	
 }

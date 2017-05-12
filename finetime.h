@@ -26,6 +26,7 @@
  * @author Tongping Liu <http://www.cs.utsa.edu/~tongpingliu>
  */
 
+#define TSC_MAX 0xFFFFFFFFUL
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -36,8 +37,7 @@ extern "C" {
   };
   
   void start  (struct timeinfo *ti);
-  double stop (struct timeinfo * begin, struct timeinfo * end);
-  unsigned long elapsed2ms(double elapsed);
+	double get_elapsed2ms( struct timeinfo *start, struct timeinfo *stop);
 
 #ifdef __cplusplus
 };
