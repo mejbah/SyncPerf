@@ -1,5 +1,5 @@
-#if !defined(DOUBLETAKE_RECORDENTRIES_H)
-#define DOUBLETAKE_RECORDENTRIES_H
+#if !defined(RECORDENTRIES_H)
+#define RECORDENTRIES_H
 
 /*
  * @file   recordentires.h

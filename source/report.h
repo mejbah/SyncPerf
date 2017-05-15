@@ -414,12 +414,13 @@ public:
 #endif
 		fs.close();
 #endif
-
+#ifdef GET_STATISTICS
 		std::cout<< "STATISTICS:\n";
 		std::cout<< "\ttotal Distinct Locks: " << id << std::endl;
 		std::cout<< "\ttatal Acquired Locks: " << totalLocks << std::endl;
 		std::cout<< "\ttatal Conflicts: " << totalConflicts << std::endl;
 		std::cout<< "\ttatal CondWaits: " << totalCondWaits << std::endl;
+#endif
 		
 		//std::cout << total_threads << " threads, " << id <<  " mutexes\n";
 		
