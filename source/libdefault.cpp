@@ -7,7 +7,6 @@
 #include "recordentries.hh"
 #include "report.h"
 
-
 extern "C" {
   void initializer (void) __attribute__((constructor));
   void finalizer (void)   __attribute__((destructor));

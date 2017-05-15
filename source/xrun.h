@@ -1,7 +1,7 @@
 /*
  * @file   xrun.h
  * @brief  Overall program execution control
- * @author Tongping Liu, Mejbah ul Alam <mejbah.alam@gmail.com>
+ * @author Tongping Liu<tongping.liu@utsa.edu>, Mejbah ul Alam <mejbah.alam@gmail.com>
  */
 
 #ifndef _XRUN_H

@@ -22,7 +22,7 @@
 /*
  * @file   xthread.h
  * @brief  Managing the thread creation, etc.
- * @author Tongping Liu <http://www.cs.umass.edu/~tonyliu>, Mejbah ul Alam<mohammad.alam@utsa.edu>
+ * @author Tongping Liu <tongping.liu@utsa.edu>, Mejbah ul Alam<mohammad.alam@utsa.edu>
  */
 
 #ifndef _XTHREAD_H_

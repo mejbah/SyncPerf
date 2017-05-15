@@ -14,7 +14,7 @@
  When epoch ends, we reset the counter to 0 so that we can reuse all
  memory and there is no need to release the memory of recording entries.
 
- * @author Tongping Liu <http://www.cs.umass.edu/~tonyliu>
+ * @author Tongping Liu <tongping.liu@utsa.edu>
  */
 
 #include <errno.h>
