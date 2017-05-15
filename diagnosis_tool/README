@@ -1,1 +1,4 @@
-/home/mejbah/pin/pin-2.14-71313-gcc.4.4.7-linux/pin.sh -t sync_track.so -- ./bins/test
+
+RUN:
+- download PIN : https://software.intel.com/en-us/articles/pin-a-dynamic-binary-instrumentation-tool
+- /home/mejbah/pin/pin-2.14-71313-gcc.4.4.7-linux/pin.sh -t sync_track.so -- ./path/to/binary

@@ -3,7 +3,7 @@ SyncPerf detects and categorizes synchronization related performance issues. It 
 ### EuroSys'17 Paper : http://dl.acm.org/citation.cfm?id=3064186
 
 ## Build
-- `cd src`
+- `cd source`
 - run `make`
 
 ## Run
