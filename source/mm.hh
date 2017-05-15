@@ -1,5 +1,5 @@
-#if !defined(DOUBLETAKE_MM_H)
-#define DOUBLETAKE_MM_H
+#if !defined(MM_H)
+#define MM_H
 
 #include <errno.h>
 #include <stddef.h>
@@ -8,8 +8,12 @@
 #include <string.h>
 #include <sys/mman.h>
 
-//#include "log.hh"
-//#include "real.hh"
+/*
+ * @file   mm.hh
+ * @brief  Memory management 
+ * @author Tongping Liu <tongping.liu@utsa.edu>
+ */
+
 
 class MM {
 public:

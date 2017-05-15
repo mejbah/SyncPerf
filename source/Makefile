@@ -15,7 +15,7 @@ CPP_OBJS = $(patsubst %.cpp,%.o,$(CPP_SRCS))
 
 #OBJECTS_AS := $(patsubst %.s,%.o,$(wildcard *.S))
 OBJECTS_AS = lowlevellock.o
-all: $(TARGET) CSCOPE
+all: $(TARGET) 
 
 $(TARGET) : $(OBJS) $(OBJECTS_AS) $(CPP_OBJS)
 #$(TARGET) : $(OBJS) 
